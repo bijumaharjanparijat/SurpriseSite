@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>For Deepa 💜</title>
+  <meta name="description" content="A little something for the person who makes my ordinary days feel like a victory screen." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0E1220" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta property="og:title" content="For Deepa 💜" />
+  <meta property="og:description" content="A little something, just for you." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💜%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="loading">
+
+  <!-- ==================== NO-JS FALLBACK ==================== -->
+  <noscript>
+    <div class="noscript">
+      <p>This little surprise needs JavaScript enabled. Turn it on and refresh 💜</p>
+    </div>
+  </noscript>
+
+  <!-- ==================== CIRCULAR LOADER ==================== -->
+  <div id="loader" class="loader" role="status" aria-live="polite">
+    <div class="loader-content">
+      <div class="ring-wrap" aria-hidden="true">
+        <svg class="progress-ring" viewBox="0 0 120 120">
+          <defs>
+            <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7B4B9E" />
+              <stop offset="60%" stop-color="#C2A3E1" />
+              <stop offset="100%" stop-color="#E8D5A3" />
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="60" cy="60" r="52" />
+          <circle class="ring-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <span class="loader-heart">💜</span>
+      </div>
+      <p class="loader-text" id="loaderText">Tuning the Pied Piper frequency…</p>
+      <button id="skipBtn" class="skip-btn" type="button">Skip the spell, my love →</button>
+    </div>
+  </div>
+
+  <!-- ==================== PIN GATE ==================== -->
+  <section id="pinGate" class="pin-gate hidden" aria-labelledby="pinTitleEl">
+    <div class="pin-content">
+      <p class="pin-eyebrow" data-text="ui.pinEyebrow">For Deepa only</p>
+      <h2 class="pin-title" id="pinTitleEl" data-text="ui.pinTitle">This site is protected.</h2>
+      <p class="pin-subtitle" data-text="ui.pinSubtitle">Only one person on Earth has the key.</p>
+      <p class="pin-hint" data-text="ui.pinHint">The day the world got luckier. Two digits, twice.</p>
+      <div class="pin-inputs" role="group" aria-label="Enter 4-digit PIN">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-input" aria-label="PIN digit 1 of 4" autocomplete="off" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-input" aria-label="PIN digit 2 of 4" autocomplete="off" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-input" aria-label="PIN digit 3 of 4" autocomplete="off" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="pin-input" aria-label="PIN digit 4 of 4" autocomplete="off" />
+      </div>
+      <p class="pin-message" id="pinMessage" aria-live="assertive"></p>
+    </div>
+  </section>
+
+  <!-- ==================== DATE QUESTIONS ==================== -->
+  <section id="dateQuestions" class="date-questions hidden" aria-label="Date verification">
+    <div class="date-card" id="q1">
+      <h2 class="date-question" id="q1Text"></h2>
+      <p class="date-hint" id="q1Hint"></p>
+      <input type="text" class="date-input" id="q1Input" aria-labelledby="q1Text" placeholder="Your answer…" autocomplete="off" />
+      <button class="btn" id="q1Submit" type="button">That's it</button>
+      <p class="date-feedback" id="q1Feedback" aria-live="polite"></p>
+    </div>
+    <div class="date-card hidden" id="q2">
+      <h2 class="date-question" id="q2Text"></h2>
+      <p class="date-hint" id="q2Hint"></p>
+      <input type="text" class="date-input" id="q2Input" aria-labelledby="q2Text" placeholder="Your answer…" autocomplete="off" />
+      <button class="btn" id="q2Submit" type="button">That's it</button>
+      <p class="date-feedback" id="q2Feedback" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- ==================== MAIN SITE ==================== -->
+  <main id="mainSite" class="hidden">
+
+    <!-- ========== HERO ========== -->
+    <section class="hero" id="heroSection" aria-label="Welcome">
+      <div class="particles" id="particles" aria-hidden="true"></div>
+      <div class="hero-content">
+        <p class="hero-eyebrow" data-text="ui.heroEyebrow">Happy Birthday</p>
+        <h1 class="hero-name" id="heroName"></h1>
+        <p class="hero-subtitle" id="heroSubtitle" aria-live="polite"></p>
+        <p class="hero-floating-fact" id="heroFact" aria-live="polite"></p>
+        <button class="begin-btn" id="beginBtn" type="button">Press to begin</button>
+      </div>
+      <div class="scroll-hint" aria-hidden="true">↓</div>
+      <!-- secret corner trigger -->
+      <button class="secret-corner" id="secretCorner" aria-label="Secret" tabindex="-1"></button>
+    </section>
+
+    <!-- ========== BTS PIED PIPER LOUNGE ========== -->
+    <section class="section bts-section reveal" id="btsSection">
+      <h2 class="section-title" data-text="sections.btsLoungeSection.title">The Pied Piper Lounge</h2>
+      <p class="section-subtitle" data-text="sections.btsLoungeSection.subtitle">For the songs we share, and the ones we will.</p>
+      <div class="bts-card">
+        <p class="bts-intro" id="btsIntro"></p>
+        <div class="bts-lines" id="btsLines"></div>
+        <div class="borahae-block">
+          <span class="borahae-label" id="borahaeLabel"></span>
+          <p class="borahae-text" id="borahaeText"></p>
+        </div>
+        <div class="bts-notes">
+          <div class="bts-note">
+            <span class="bts-note-icon" aria-hidden="true">✈</span>
+            <p id="busanNote"></p>
+          </div>
+          <div class="bts-note">
+            <span class="bts-note-icon" aria-hidden="true">♡</span>
+            <p id="armyPurpleNote"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TIMELINE ========== -->
+    <section class="section timeline-section" id="timelineSection">
+      <h2 class="section-title" data-text="sections.timelineSection.title">Our Story</h2>
+      <p class="section-subtitle" data-text="sections.timelineSection.subtitle">Every moment led here.</p>
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <!-- ========== MLBB HEROES ========== -->
+    <section class="section heroes-section" id="heroesSection">
+      <h2 class="section-title" data-text="sections.heroesSection.title">Our Battlefield</h2>
+      <p class="section-subtitle" data-text="sections.heroesSection.subtitle">You carry me as Aamon. I let you take my buff. We both die anyway.</p>
+      <div class="heroes-grid" id="heroesGrid"></div>
+      <div class="buff-area">
+        <button class="buff-btn" id="buffBtn" type="button" data-text="ui.buffButton">Steal My Buff</button>
+        <p class="buff-message" id="buffMessage" aria-live="polite"></p>
+        <p class="buff-joke" id="buffJoke" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ========== GAMING STATS ========== -->
+    <section class="section stats-section reveal" id="statsSection">
+      <h2 class="section-title" data-text="sections.gamingStatsSection.title">Our Unofficial Stats</h2>
+      <p class="section-subtitle" data-text="sections.gamingStatsSection.subtitle">Not audited. Not sorry.</p>
+      <div class="stats-grid" id="statsGrid"></div>
+    </section>
+
+    <!-- ========== REASON SPINNER ========== -->
+    <section class="section spinner-section reveal" id="spinnerSection">
+      <h2 class="section-title" data-text="sections.spinnerSection.title">Spin for a reason</h2>
+      <p class="section-subtitle" data-text="sections.spinnerSection.subtitle">One tap, one reason I love you. The wheel is rigged.</p>
+      <div class="spinner-area">
+        <button class="spinner-btn" id="spinnerBtn" type="button">
+          <span class="spinner-icon" aria-hidden="true">✦</span>
+          <span class="spinner-label" id="spinnerLabel">Spin the wheel</span>
+        </button>
+        <p class="spinner-result" id="spinnerResult" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ========== MOOD CHECK ========== -->
+    <section class="section mood-section reveal" id="moodSection">
+      <h2 class="section-title" data-text="sections.moodSection.title">How are you feeling right now?</h2>
+      <p class="section-subtitle" data-text="sections.moodSection.subtitle">Pick one. I have a message for each.</p>
+      <div class="mood-grid" id="moodGrid"></div>
+      <p class="mood-message" id="moodMessage" aria-live="polite"></p>
+    </section>
+
+    <!-- ========== ENOUGH ROOM ========== -->
+    <section class="section enough-section" id="enoughSection">
+      <h2 class="section-title" data-text="sections.enoughSection.title">The Enough Room</h2>
+      <p class="section-subtitle" data-text="sections.enoughSection.subtitle">For the days when the thought comes back.</p>
+      <div class="enough-area">
+        <button class="enough-btn" id="enoughBtn" type="button"></button>
+        <p class="enough-message" id="enoughMessage" aria-live="polite"></p>
+        <div class="enough-final hidden" id="enoughFinal">
+          <p class="victory-label" id="victoryLabel"></p>
+          <p class="victory-subtext" id="victorySubtext"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== HUG BUTTON ========== -->
+    <section class="section hug-section reveal" id="hugSection">
+      <h2 class="section-title" data-text="sections.hugSection.title">A hug, on demand</h2>
+      <p class="section-subtitle" data-text="sections.hugSection.subtitle">Press when you need one. Infinite stock.</p>
+      <div class="hug-area">
+        <button class="hug-btn" id="hugBtn" type="button">
+          <span class="hug-icon" aria-hidden="true">♡</span>
+          <span class="hug-label" id="hugLabel">Send me a hug</span>
+        </button>
+        <p class="hug-message" id="hugMessage" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ========== FEAR FAIRY ========== -->
+    <section class="section fear-section reveal" id="fearSection">
+      <h2 class="section-title" data-text="sections.fearSection.title">The things that scare you</h2>
+      <p class="section-subtitle" data-text="sections.fearSection.subtitle">I know about them. I have decided to take them personally.</p>
+      <div class="fear-grid" id="fearGrid"></div>
+      <p class="fear-message" id="fearMessage" aria-live="polite"></p>
+    </section>
+
+    <!-- ========== VOICE NOTE ========== -->
+    <section class="section voice-section reveal" id="voiceSection">
+      <h2 class="section-title" data-text="sections.voiceSection.title">A note about your voice</h2>
+      <p class="section-subtitle" data-text="sections.voiceSection.subtitle">Because I love it. That's the whole reason.</p>
+      <div class="voice-card">
+        <p class="voice-text" id="voiceText"></p>
+      </div>
+    </section>
+
+    <!-- ========== DREAM JOB ========== -->
+    <section class="section dreamjob-section reveal" id="dreamJobSection">
+      <h2 class="section-title" data-text="sections.dreamJobSection.title">Your company</h2>
+      <p class="section-subtitle" data-text="sections.dreamJobSection.subtitle">A reminder I want you to read on the days it feels far away.</p>
+      <div class="dreamjob-card">
+        <p class="dreamjob-text" id="dreamJobText"></p>
+      </div>
+    </section>
+
+    <!-- ========== FAVORITES SHRINE ========== -->
+    <section class="section favorites-section reveal" id="favoritesSection">
+      <h2 class="section-title" data-text="sections.favoritesSection.title">A small shrine to your favorites</h2>
+      <p class="section-subtitle" data-text="sections.favoritesSection.subtitle">Because they are part of you, and I love the whole thing.</p>
+      <div class="favorites-grid" id="favoritesGrid"></div>
+    </section>
+
+    <!-- ========== GALLERY ========== -->
+    <section class="section gallery-section" id="gallerySection">
+      <h2 class="section-title" data-text="sections.gallerySection.title">Proof of Us</h2>
+      <p class="section-subtitle" data-text="sections.gallerySection.subtitle">A few moments I keep close.</p>
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </section>
+
+    <!-- ========== DREAM MAP ========== -->
+    <section class="section dream-section" id="dreamSection">
+      <h2 class="section-title" data-text="sections.dreamSection.title">Our Dream Map</h2>
+      <p class="section-subtitle" data-text="sections.dreamSection.subtitle">Tap each pin. They all lead to you.</p>
+      <div class="dream-map" id="dreamMap"></div>
+      <p class="dream-message" id="dreamMessage" aria-live="polite"></p>
+    </section>
+
+    <!-- ========== LOVE LETTER ========== -->
+    <section class="section letter-section" id="letterSection">
+      <div class="letter-card reveal">
+        <h2 class="letter-heading" id="letterHeading">A letter for you</h2>
+        <p class="letter-text" id="letterText"></p>
+        <button class="btn continue-btn hidden" id="continueBtn" type="button">Continue →</button>
+      </div>
+    </section>
+
+    <!-- ========== QUIZ ========== -->
+    <section class="section quiz-section" id="quizSection">
+      <h2 class="section-title" data-text="sections.quizSection.title">How Well Do You Know Us?</h2>
+      <div class="quiz-container" id="quizContainer"></div>
+      <div class="quiz-result hidden" id="quizResult">
+        <h3 id="quizResultTitle"></h3>
+        <p id="quizResultSubtext"></p>
+      </div>
+    </section>
+
+    <!-- ========== FINAL TRIGGER ========== -->
+    <section class="section final-trigger-section" id="finalTriggerSection">
+      <button class="final-trigger-btn hidden" id="finalTriggerBtn" type="button" data-text="ui.finalTrigger">One last thing…</button>
+    </section>
+
+  </main>
+
+  <!-- ==================== FINAL SURPRISE OVERLAY ==================== -->
+  <div class="final-surprise hidden" id="finalSurprise" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="finalIntro">
+    <canvas id="confettiCanvas" aria-hidden="true"></canvas>
+    <div class="final-content">
+      <p class="final-intro" id="finalIntro"></p>
+      <p class="final-message" id="finalMessage"></p>
+      <div class="final-buttons" id="finalButtons"></div>
+      <p class="final-thanks hidden" id="finalThanks" aria-live="polite"></p>
+      <p class="final-after hidden" id="finalAfter"></p>
+      <div class="final-actions hidden" id="finalActions">
+        <button class="cert-btn" id="certBtn" type="button">Download Your Certificate 💜</button>
+        <button class="share-btn" id="shareBtn" type="button">Share the promise</button>
+      </div>
+      <button class="final-close hidden" id="finalClose" type="button">Return to the site ♡</button>
+    </div>
+  </div>
+
+  <!-- ==================== MUSIC ==================== -->
+  <button id="musicBtn" class="music-btn" type="button" aria-label="Open music panel" aria-expanded="false">
+    <span class="music-icon" aria-hidden="true">♫</span>
+    <span class="music-label" data-text="ui.musicLabel">Pied Piper mode</span>
+  </button>
+  <div id="musicPanel" class="music-panel hidden" role="region" aria-label="Music">
+    <p class="music-hint" data-text="ui.musicHint">Tap to play our playlist.</p>
+    <div class="music-placeholder" id="musicPlaceholder"></div>
+    <div class="music-embed" id="musicEmbed"></div>
+  </div>
+
+  <!-- ==================== TOASTS ==================== -->
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
