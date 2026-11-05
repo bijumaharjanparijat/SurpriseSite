@@ -1,14 +1,25 @@
 /* ============================================================
-   Deepa: The Forever Duo — main logic
-   State, loading, gating, animations, interactions, surprises
+   Deepa: The Forever Duo — main logic (v1.2 — hardened)
+   State, loading, gating, BTS assets, music, animations,
+   interactions, surprises. Flow is guarded against stale
+   state and against a single failure breaking the chain.
    ============================================================ */
 
 const STATE_KEY = 'deepa_site_state_v2';
+const BTS_SHUFFLE_KEY = 'deepa_bts_shuffle_v1';
 let memState = null;
 
-if (/[?&]reset\b/.test(location.search)) {
-  try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+/* ---------- RESET HANDLING ---------- */
+if (/[?&]hard_reset\b/.test(location.search)) {
+  try { localStorage.clear(); } catch (e) {}
+  try { sessionStorage.clear(); } catch (e) {}
   history.replaceState(null, '', location.pathname);
+  console.log('[boot] hard_reset applied — localStorage and sessionStorage cleared');
+} else if (/[?&]reset\b/.test(location.search)) {
+  try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+  try { sessionStorage.removeItem(BTS_SHUFFLE_KEY); } catch (e) {}
+  history.replaceState(null, '', location.pathname);
+  console.log('[boot] reset applied — state and bts shuffle cleared');
 }
 
 /* ---------- STATE ---------- */
@@ -29,7 +40,8 @@ function defaultState() {
       moodPicked: '',
       fearPicked: '',
       secretCornerTaps: 0,
-      konamiDone: false
+      konamiDone: false,
+      png13Taps: 0
     }
   };
 }
@@ -182,17 +194,508 @@ function initReveal() {
   targets.forEach((el) => io.observe(el));
 }
 
-/* ---------- LOADER ---------- */
+/* ---------- BTS ASSET SYSTEM ---------- */
+function getBtsBasePath() {
+  return (CONFIG.btsAssets && CONFIG.btsAssets.basePath) || 'assets/bts/';
+}
+
+function preloadBtsAssets() {
+  if (!CONFIG.btsAssets || CONFIG.btsAssets.preload === false) return;
+  const base = getBtsBasePath();
+  const paths = [];
+
+  ['loading', 'pin', 'dates'].forEach((key) => {
+    const group = CONFIG.btsAssets[key];
+    if (group && Array.isArray(group.corners)) {
+      group.corners.forEach((c) => paths.push(base + c.src));
+    }
+  });
+
+  ['hero', 'btsLounge', 'quiz'].forEach((key) => {
+    const group = CONFIG.btsAssets[key];
+    if (group && Array.isArray(group.sides)) {
+      group.sides.forEach((s) => paths.push(base + s.src));
+    }
+  });
+
+  if (CONFIG.btsAssets.randomSections && Array.isArray(CONFIG.btsAssets.randomSections.pool)) {
+    CONFIG.btsAssets.randomSections.pool.forEach((src) => paths.push(base + src));
+  }
+
+  if (CONFIG.btsAssets.finalOverlay) {
+    if (CONFIG.btsAssets.finalOverlay.negative) {
+      paths.push(base + CONFIG.btsAssets.finalOverlay.negative.src);
+    }
+    if (CONFIG.btsAssets.finalOverlay.afterYes) {
+      paths.push(base + CONFIG.btsAssets.finalOverlay.afterYes.src);
+    }
+  }
+
+  const unique = Array.from(new Set(paths));
+  unique.forEach((src) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+  });
+}
+
+function applyBtsMobileFlags() {
+  if (!CONFIG.btsAssets || !CONFIG.btsAssets.mobile) return;
+  const m = CONFIG.btsAssets.mobile;
+  if (m.hideCorners) document.body.classList.add('bts-hide-corners');
+  if (m.hideSides) document.body.classList.add('bts-hide-sides');
+  if (m.staticOnly) document.body.classList.add('bts-static');
+}
+
+function applyBtsImageSettings(img, spec) {
+  if (!img || !spec) return img;
+  const match = String(spec.src || '').match(/(?:^|\/)(\d+)\.png$/i);
+  if (match) img.classList.add(`bts-png-${match[1].padStart(2, '0')}`);
+  if (spec.className) {
+    spec.className.split(/\s+/).filter(Boolean).forEach((name) => img.classList.add(name));
+  }
+
+  // Per-placement layout values can be CSS lengths (including calc/clamp).
+  // A corresponding .bts-png-NN rule in style.css can override them by breakpoint.
+  const layout = spec.layout || {};
+  const vars = {
+    width: '--bts-image-width',
+    height: '--bts-image-height',
+    top: '--bts-image-top',
+    right: '--bts-image-right',
+    bottom: '--bts-image-bottom',
+    left: '--bts-image-left',
+    rotation: '--bts-image-rotation',
+  };
+  Object.entries(vars).forEach(([key, variable]) => {
+    if (layout[key] !== undefined && layout[key] !== null && layout[key] !== '') {
+      img.style.setProperty(variable, String(layout[key]));
+    }
+  });
+  if (layout.left && !layout.right) img.style.setProperty('--bts-image-right', 'auto');
+  if (layout.right && !layout.left) img.style.setProperty('--bts-image-left', 'auto');
+  if (layout.top && !layout.bottom) img.style.setProperty('--bts-image-bottom', 'auto');
+  if (layout.bottom && !layout.top) img.style.setProperty('--bts-image-top', 'auto');
+  if (layout.bottom) img.style.setProperty('--bts-image-translate-y', '0');
+  return img;
+}
+
+function buildBtsCorner(spec, parent) {
+  if (!spec || !parent) return null;
+  const img = document.createElement('img');
+  img.className = 'bts-corner ' + spec.corner;
+  applyBtsImageSettings(img, spec);
+  img.alt = '';
+  img.setAttribute('aria-hidden', 'true');
+  img.decoding = 'async';
+  img.src = getBtsBasePath() + spec.src;
+  if (spec.animation) img.setAttribute('data-anim', spec.animation);
+  parent.appendChild(img);
+  return img;
+}
+
+function buildBtsSide(spec, parent, side) {
+  if (!spec || !parent) return null;
+  const img = document.createElement('img');
+  const resolvedSide = spec.side || side || 'left';
+  img.className = 'bts-side ' + resolvedSide;
+  applyBtsImageSettings(img, spec);
+  img.alt = '';
+  img.setAttribute('aria-hidden', 'true');
+  img.decoding = 'async';
+  img.src = getBtsBasePath() + spec.src;
+  if (spec.animation) img.setAttribute('data-anim', spec.animation);
+  parent.appendChild(img);
+  return img;
+}
+
+function initBtsCorners(group, parent) {
+  if (!group || !parent) return;
+  const specs = group.corners || [];
+  const existing = parent.querySelectorAll('.bts-corner');
+  if (existing.length === specs.length) return;
+  existing.forEach((el) => el.remove());
+  specs.forEach((spec) => buildBtsCorner(spec, parent));
+}
+
+function initBtsLoader() {
+  const loader = document.getElementById('loader');
+  if (!loader || !CONFIG.btsAssets || !CONFIG.btsAssets.loading) return;
+  initBtsCorners(CONFIG.btsAssets.loading, loader);
+}
+
+function initBtsPin() {
+  const gate = document.getElementById('pinGate');
+  if (!gate || !CONFIG.btsAssets || !CONFIG.btsAssets.pin) return;
+  initBtsCorners(CONFIG.btsAssets.pin, gate);
+}
+
+function initBtsDates() {
+  const dates = document.getElementById('dateQuestions');
+  if (!dates || !CONFIG.btsAssets || !CONFIG.btsAssets.dates) return;
+  initBtsCorners(CONFIG.btsAssets.dates, dates);
+}
+
+function initBtsHero() {
+  const hero = document.getElementById('heroSection');
+  if (!hero || !CONFIG.btsAssets || !CONFIG.btsAssets.hero) return;
+  const existing = hero.querySelectorAll('.bts-side');
+  if (existing.length === (CONFIG.btsAssets.hero.sides || []).length) return;
+  existing.forEach((el) => el.remove());
+  const specs = CONFIG.btsAssets.hero.sides || [];
+  specs.forEach((spec) => {
+    const img = buildBtsSide(spec, hero);
+    if (img && CONFIG.easterEggs && CONFIG.easterEggs.png13Tap && spec.src === '13.png') {
+      img.classList.add('bts-tappable');
+      img.setAttribute('role', 'button');
+      img.setAttribute('tabindex', '0');
+      img.setAttribute('aria-label', 'A small secret');
+      img.addEventListener('click', handlePng13Tap);
+      img.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handlePng13Tap();
+        }
+      });
+    }
+  });
+}
+
+function handlePng13Tap() {
+  const egg = CONFIG.easterEggs && CONFIG.easterEggs.png13Tap;
+  if (!egg) return;
+  const required = egg.taps || 5;
+  let taps = getState().interactions.png13Taps || 0;
+  taps++;
+  setInteraction('png13Taps', taps);
+  const el = document.querySelector('.bts-side.bts-tappable');
+  if (el) {
+    el.classList.remove('bts-tapped');
+    void el.offsetWidth;
+    el.classList.add('bts-tapped');
+  }
+  if (taps >= required) {
+    setInteraction('png13Taps', 0);
+    toast(egg.message);
+    heartBurst(el || document.body);
+  }
+}
+
+function initBtsBtsLounge() {
+  const section = document.getElementById('btsSection');
+  if (!section || !CONFIG.btsAssets || !CONFIG.btsAssets.btsLounge) return;
+  const existing = section.querySelectorAll('.bts-side');
+  if (existing.length === (CONFIG.btsAssets.btsLounge.sides || []).length) return;
+  existing.forEach((el) => el.remove());
+  (CONFIG.btsAssets.btsLounge.sides || []).forEach((spec) => {
+    buildBtsSide(spec, section);
+  });
+}
+
+function initBtsQuiz() {
+  const section = document.getElementById('quizSection');
+  if (!section || !CONFIG.btsAssets || !CONFIG.btsAssets.quiz) return;
+  const existing = section.querySelectorAll('.bts-side');
+  if (existing.length === (CONFIG.btsAssets.quiz.sides || []).length) return;
+  existing.forEach((el) => el.remove());
+  (CONFIG.btsAssets.quiz.sides || []).forEach((spec) => {
+    buildBtsSide(spec, section);
+  });
+}
+
+function getBtsShuffle() {
+  if (!CONFIG.btsAssets || !CONFIG.btsAssets.randomSections) return [];
+  const pool = CONFIG.btsAssets.randomSections.pool || [];
+  const animPool = CONFIG.btsAssets.randomSections.animationPool || ['bob'];
+  const persist = CONFIG.btsAssets.randomSections.shuffleOncePerSession !== false;
+
+  if (persist) {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(BTS_SHUFFLE_KEY));
+      if (stored && Array.isArray(stored) && stored.length === pool.length) {
+        return stored;
+      }
+    } catch (e) {}
+  }
+
+  const shuffled = pool.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const combined = shuffled.map((src) => ({
+    src,
+    animation: animPool[Math.floor(Math.random() * animPool.length)]
+  }));
+
+  if (persist) {
+    try { sessionStorage.setItem(BTS_SHUFFLE_KEY, JSON.stringify(combined)); } catch (e) {}
+  }
+  return combined;
+}
+
+function initBtsRandomSections() {
+  if (!CONFIG.sections || !CONFIG.sections.sideArt) return;
+  if (!CONFIG.btsAssets || !CONFIG.btsAssets.randomSections) return;
+  const artMap = CONFIG.sections.sideArt;
+  const shuffled = getBtsShuffle();
+  if (!shuffled.length) return;
+
+  const randomSectionIds = Object.keys(artMap).filter(
+    (key) => artMap[key].mode === 'random'
+  );
+
+  let sideToggle = 0;
+  let poolIdx = 0;
+  randomSectionIds.forEach((sectionKey) => {
+    const el = document.getElementById(sectionKey);
+    if (!el) return;
+    if (el.querySelector('.bts-side')) return;
+    if (poolIdx >= shuffled.length) poolIdx = 0;
+    const spec = shuffled[poolIdx++];
+    const side = sideToggle % 2 === 0 ? 'left' : 'right';
+    sideToggle++;
+    buildBtsSide({ src: spec.src, side, animation: spec.animation }, el);
+  });
+}
+
+function initBtsFinalNegative() {
+  const overlay = document.getElementById('finalSurprise');
+  if (!overlay || !CONFIG.btsAssets || !CONFIG.btsAssets.finalOverlay) return;
+  const cfg = CONFIG.btsAssets.finalOverlay.negative;
+  if (!cfg) return;
+  const existing = overlay.querySelectorAll('.bts-corner');
+  if (existing.length === (cfg.corners || []).length) return;
+  existing.forEach((el) => el.remove());
+  (cfg.corners || []).forEach((corner) => {
+    const img = document.createElement('img');
+    img.className = 'bts-corner ' + corner;
+    applyBtsImageSettings(img, { src: cfg.src, className: cfg.className, layout: cfg.layout });
+    img.alt = '';
+    img.setAttribute('aria-hidden', 'true');
+    img.decoding = 'async';
+    img.src = getBtsBasePath() + cfg.src;
+    if (cfg.animation) img.setAttribute('data-anim', cfg.animation);
+    overlay.appendChild(img);
+  });
+}
+
+function revealBtsFinalReward() {
+  const container = document.getElementById('finalReward');
+  if (!container) return;
+  if (!CONFIG.btsAssets || !CONFIG.btsAssets.finalOverlay) return;
+  const cfg = CONFIG.btsAssets.finalOverlay.afterYes;
+  if (!cfg) return;
+
+  container.innerHTML = '';
+  const img = document.createElement('img');
+  img.alt = '';
+  img.setAttribute('aria-hidden', 'true');
+  img.decoding = 'async';
+  img.src = getBtsBasePath() + cfg.src;
+  applyBtsImageSettings(img, cfg);
+  container.appendChild(img);
+
+  container.classList.remove('hidden');
+  void container.offsetWidth;
+  container.classList.add('show');
+}
+
+function hideBtsFinalReward() {
+  const container = document.getElementById('finalReward');
+  if (!container) return;
+  container.classList.add('hidden');
+  container.classList.remove('show');
+}
+
+/* ---------- MUSIC ---------- */
+let audioEl = null;
+let currentTrackId = '';
+let currentSrc = '';
+let autoplayAttempted = false;
+let autoplayRetryAttached = false;
+
+function getAudio() {
+  if (audioEl) return audioEl;
+  audioEl = new Audio();
+  audioEl.loop = CONFIG.music.loop !== false;
+  audioEl.volume = typeof CONFIG.music.volume === 'number' ? CONFIG.music.volume : 0.55;
+  audioEl.preload = 'auto';
+  audioEl.addEventListener('play', updateTrackUI);
+  audioEl.addEventListener('pause', updateTrackUI);
+  audioEl.addEventListener('error', () => {
+    console.warn('[music] Audio element error. Check that the file exists at the configured path.');
+    updateTrackUI();
+  });
+  return audioEl;
+}
+
+function updateTrackUI() {
+  const btn = document.getElementById('musicBtn');
+  const a = getAudio();
+  const isPlaying = !a.paused && a.src;
+  if (btn) btn.classList.toggle('playing', isPlaying);
+  document.querySelectorAll('.music-track').forEach((t) => {
+    const matches = t.dataset.trackId === currentTrackId;
+    t.classList.toggle('active', matches && isPlaying);
+  });
+}
+
+function buildTrackList() {
+  const container = document.getElementById('musicTracks');
+  if (!container) return;
+  container.innerHTML = '';
+  const tracks = (CONFIG.music && CONFIG.music.tracks) || [];
+  tracks.forEach((track) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'music-track';
+    btn.dataset.trackId = track.id;
+    const icon = document.createElement('span');
+    icon.className = 'music-track-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '♪';
+    const body = document.createElement('span');
+    body.className = 'music-track-body';
+    const title = document.createElement('span');
+    title.className = 'music-track-title';
+    title.textContent = track.title || track.id;
+    const artist = document.createElement('span');
+    artist.className = 'music-track-artist';
+    artist.textContent = track.artist || '';
+    const note = document.createElement('span');
+    note.className = 'music-track-note';
+    note.textContent = track.note || '';
+    body.appendChild(title);
+    body.appendChild(artist);
+    if (track.note) body.appendChild(note);
+    btn.appendChild(icon);
+    btn.appendChild(body);
+    btn.addEventListener('click', () => handleTrackClick(track.id));
+    container.appendChild(btn);
+  });
+  updateTrackUI();
+}
+
+function setTrack(id) {
+  const tracks = (CONFIG.music && CONFIG.music.tracks) || [];
+  const track = tracks.find((t) => t.id === id);
+  if (!track) return;
+  const a = getAudio();
+  if (currentSrc !== track.src) {
+    a.src = track.src;
+    currentSrc = track.src;
+  }
+  currentTrackId = id;
+  a.play().then(() => {
+    const hint = document.getElementById('musicAutoplayHint');
+    if (hint) hint.classList.add('hidden');
+    updateTrackUI();
+  }).catch(() => {
+    onAutoplayBlocked();
+    updateTrackUI();
+  });
+}
+
+function handleTrackClick(id) {
+  const a = getAudio();
+  if (currentTrackId === id) {
+    if (a.paused) {
+      a.play().then(() => {
+        const hint = document.getElementById('musicAutoplayHint');
+        if (hint) hint.classList.add('hidden');
+        updateTrackUI();
+      }).catch(() => {
+        onAutoplayBlocked();
+        updateTrackUI();
+      });
+    } else {
+      a.pause();
+      updateTrackUI();
+    }
+  } else {
+    setTrack(id);
+  }
+}
+
+function tryAutoplayAfterPin() {
+  if (autoplayAttempted) return;
+  if (!CONFIG.music || CONFIG.music.autoplayAfterPin === false) return;
+  autoplayAttempted = true;
+  const defaultTrack = CONFIG.music.defaultTrack
+    || (CONFIG.music.tracks && CONFIG.music.tracks[0] && CONFIG.music.tracks[0].id);
+  try { setTrack(defaultTrack); } catch (e) { console.warn('[music] autoplay failed:', e); }
+}
+
+function onAutoplayBlocked() {
+  const hint = document.getElementById('musicAutoplayHint');
+  if (hint) hint.classList.remove('hidden');
+  if (autoplayRetryAttached) return;
+  autoplayRetryAttached = true;
+  const retry = () => {
+    document.removeEventListener('pointerdown', retry, true);
+    document.removeEventListener('keydown', retry, true);
+    const a = getAudio();
+    if (!a.src) {
+      autoplayRetryAttached = false;
+      return;
+    }
+    a.play().then(() => {
+      const h = document.getElementById('musicAutoplayHint');
+      if (h) h.classList.add('hidden');
+      updateTrackUI();
+    }).catch(() => {
+      autoplayRetryAttached = false;
+    });
+  };
+  document.addEventListener('pointerdown', retry, true);
+  document.addEventListener('keydown', retry, true);
+}
+
+function initMusic() {
+  currentTrackId = (CONFIG.music && CONFIG.music.defaultTrack) || '';
+  buildTrackList();
+
+  const btn = document.getElementById('musicBtn');
+  const panel = document.getElementById('musicPanel');
+  if (!btn || !panel) return;
+
+  const placeholder = document.getElementById('musicPlaceholder');
+  const tracksContainer = document.getElementById('musicTracks');
+  if (placeholder) {
+    if (tracksContainer && tracksContainer.children.length > 0) {
+      placeholder.classList.add('hidden');
+    } else if (CONFIG.music && CONFIG.music.placeholder) {
+      placeholder.textContent = CONFIG.music.placeholder;
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    const open = panel.classList.toggle('hidden') === false;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.classList.toggle('active', open);
+  });
+}
+
+/* ---------- LOADER (hardened) ---------- */
 function initLoader() {
-  const loader = $('#loader');
-  const skipBtn = $('#skipBtn');
-  const textEl = $('#loaderText');
-  const ringFill = $('.ring-fill');
-  const L = CONFIG.loading;
-  const msgs = L.loadingMessages || [];
-  const state = getState();
-  const minDuration = state.pinUnlocked ? 2500 : (reducedMotion ? 4000 : L.minDurationMs);
-  const skipAfter = state.pinUnlocked ? 0 : (reducedMotion ? 0 : L.skipAfterMs);
+  try { initBtsLoader(); } catch (e) { console.warn('[loader] initBtsLoader failed:', e); }
+
+  const loader = document.getElementById('loader');
+  const skipBtn = document.getElementById('skipBtn');
+  const textEl = document.getElementById('loaderText');
+  const ringFill = document.querySelector('.ring-fill');
+  if (!loader) { console.error('[loader] #loader not found'); return; }
+
+  const L = (CONFIG && CONFIG.loading) || {};
+  const msgs = L.loadingMessages || ['Loading…'];
+  const fallbackMs = 30000;
+  // The welcome sequence runs on every visit. Saved unlock flags must never
+  // bypass the PIN and date questions; only the visitor's other progress persists.
+  const minDuration = L.minDurationMs || fallbackMs;
+  const skipAfter = L.skipAfterMs || 4000;
+
+  console.log('[loader] starting. minDuration:', minDuration, 'skipAfter:', skipAfter);
 
   if (L.skipLabel && skipBtn) skipBtn.textContent = L.skipLabel;
   if (textEl && msgs[0]) textEl.textContent = msgs[0];
@@ -223,45 +726,108 @@ function initLoader() {
   function finish() {
     if (finished) return;
     finished = true;
-    clearInterval(msgInterval);
-    loader.classList.add('fade-out');
+    console.log('[loader] finish() called');
+    try { clearInterval(msgInterval); } catch (e) {}
+    try { loader.classList.add('fade-out'); } catch (e) { console.warn('[loader] fade-out failed:', e); }
     setTimeout(() => {
-      loader.classList.add('hidden');
-      document.body.classList.remove('loading');
-      startFlow();
+      try { loader.classList.add('hidden'); } catch (e) { console.warn('[loader] hide failed:', e); }
+      try { document.body.classList.remove('loading'); } catch (e) {}
+      try {
+        startFlow();
+      } catch (e) {
+        console.error('[loader] startFlow threw:', e);
+        try { showPinGate(); } catch (e2) { console.error('[loader] fallback showPinGate threw:', e2); }
+      }
     }, 800);
   }
   if (skipBtn) skipBtn.addEventListener('click', finish);
   setTimeout(finish, minDuration);
 }
 
-/* ---------- FLOW ---------- */
+/* ---------- FLOW (hardened) ---------- */
+let pinGateInitialized = false;
+let dateQuestionsInitialized = false;
+let mainSiteInitialized = false;
+
+function hideAllScreens() {
+  ['pinGate', 'dateQuestions', 'mainSite'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+}
+
 function startFlow() {
-  const state = getState();
-  if (state.pinUnlocked) {
-    if (state.metDateCorrect && state.relationshipDateCorrect) {
-      showMainSite();
-    } else {
-      showDateQuestions();
-    }
-  } else {
-    showPinGate();
+  let state;
+  try {
+    state = getState();
+  } catch (e) {
+    console.error('[flow] getState failed:', e);
+    state = defaultState();
   }
+  console.log('[flow] startFlow', state);
+
+  hideAllScreens();
+
+  try {
+    // Always begin at the PIN, even when this browser has completed the flow
+    // before. The main site is revealed only by the two successful answers.
+    setState({ pinUnlocked: false, metDateCorrect: false, relationshipDateCorrect: false });
+    showPinGate();
+  } catch (e) {
+    console.error('[flow] body error, forcing pin gate:', e);
+    try { showPinGate(); } catch (e2) { console.error('[flow] pin gate fallback failed:', e2); }
+  }
+
+  setTimeout(() => {
+    const anyVisible = ['pinGate', 'dateQuestions', 'mainSite'].some((id) => {
+      const el = document.getElementById(id);
+      return el && !el.classList.contains('hidden');
+    });
+    if (!anyVisible) {
+      console.warn('[flow] nothing visible after startFlow — forcing pin gate');
+      try { showPinGate(); } catch (e) { console.error('[flow] safety net failed:', e); }
+    }
+  }, 150);
 }
 
 function showPinGate() {
-  const gate = $('#pinGate');
-  if (!gate) return;
+  const gate = document.getElementById('pinGate');
+  if (!gate) { console.error('[pin] #pinGate not found'); return; }
   gate.classList.remove('hidden');
-  initPinGate();
+  try { initBtsPin(); } catch (e) { console.warn('[pin] initBtsPin failed:', e); }
+  try { initPinGate(); } catch (e) { console.error('[pin] initPinGate failed:', e); }
+  console.log('[pin] gate visible');
+}
+
+function showDateQuestions() {
+  const el = document.getElementById('dateQuestions');
+  if (!el) { console.error('[date] #dateQuestions not found'); return; }
+  el.classList.remove('hidden');
+  try { initBtsDates(); } catch (e) { console.warn('[date] initBtsDates failed:', e); }
+  try { initDateQuestions(); } catch (e) { console.error('[date] initDateQuestions failed:', e); }
+  console.log('[date] questions visible');
+}
+
+function showMainSite() {
+  const main = document.getElementById('mainSite');
+  if (!main) { console.error('[main] #mainSite not found'); return; }
+  main.classList.remove('hidden');
+  try { initMainSite(); } catch (e) { console.error('[main] initMainSite failed:', e); }
+  console.log('[main] site visible');
 }
 
 /* ---------- PIN GATE ---------- */
 function initPinGate() {
+  if (pinGateInitialized) return;
+  pinGateInitialized = true;
+
   const inputs = $$('.pin-input');
   const message = $('#pinMessage');
   const container = $('.pin-inputs');
-  if (!inputs.length || !container) return;
+  if (!inputs.length || !container) {
+    console.error('[pin] pin inputs not found');
+    return;
+  }
 
   inputs.forEach((input, i) => {
     input.addEventListener('input', (e) => {
@@ -291,15 +857,18 @@ function initPinGate() {
     });
   });
 
-  // Only auto-focus on non-touch devices to avoid mobile keyboard popping up
-  if (!window.matchMedia('(pointer: coarse)').matches) inputs[0].focus();
+  if (!window.matchMedia('(pointer: coarse)').matches) {
+    try { inputs[0].focus(); } catch (e) {}
+  }
 
   function shakeAndClear() {
     container.classList.add('shake');
     setTimeout(() => {
       container.classList.remove('shake');
       inputs.forEach((i) => { i.value = ''; });
-      if (!window.matchMedia('(pointer: coarse)').matches) inputs[0].focus();
+      if (!window.matchMedia('(pointer: coarse)').matches) {
+        try { inputs[0].focus(); } catch (e) {}
+      }
     }, 600);
   }
 
@@ -308,41 +877,34 @@ function initPinGate() {
     if (pin.length !== 4) return;
 
     if (pin === CONFIG.pin) {
-      message.textContent = CONFIG.ui.welcome;
-      message.className = 'pin-message success';
+      console.log('[pin] correct');
+      if (message) {
+        message.textContent = CONFIG.ui.welcome;
+        message.className = 'pin-message success';
+      }
       heartBurst(container);
       setState({ pinUnlocked: true });
+      tryAutoplayAfterPin();
       inputs.forEach((i) => { i.disabled = true; });
       setTimeout(() => {
-        $('#pinGate').classList.add('hidden');
+        const gate = document.getElementById('pinGate');
+        if (gate) gate.classList.add('hidden');
         showDateQuestions();
       }, 1700);
       return;
     }
 
     const egg = CONFIG.pinEasterEgg && CONFIG.pinEasterEgg[pin];
-    if (egg) {
-      message.textContent = egg;
+    if (message) {
+      message.textContent = egg || CONFIG.ui.wrongPin;
       message.className = 'pin-message error';
-      heartBurst(container);
-      shakeAndClear();
-      return;
     }
-
-    message.textContent = CONFIG.ui.wrongPin;
-    message.className = 'pin-message error';
+    if (egg) heartBurst(container);
     shakeAndClear();
   }
 }
 
 /* ---------- DATE QUESTIONS ---------- */
-function showDateQuestions() {
-  const el = $('#dateQuestions');
-  if (!el) return;
-  el.classList.remove('hidden');
-  initDateQuestions();
-}
-
 const normAnswer = (v) =>
   v.toLowerCase()
     .replace(/(\d)(st|nd|rd|th)\b/g, '$1')
@@ -350,30 +912,44 @@ const normAnswer = (v) =>
     .trim();
 
 function initDateQuestions() {
+  if (dateQuestionsInitialized) return;
+  dateQuestionsInitialized = true;
+
   const state = getState();
   const q1 = CONFIG.dates.met;
   const q2 = CONFIG.dates.relationship;
 
-  $('#q1Text').textContent = q1.question;
-  $('#q1Hint').textContent = q1.hint;
-  $('#q2Text').textContent = q2.question;
-  $('#q2Hint').textContent = q2.hint;
+  const q1Text = $('#q1Text');
+  const q1Hint = $('#q1Hint');
+  const q2Text = $('#q2Text');
+  const q2Hint = $('#q2Hint');
+  if (q1Text) q1Text.textContent = q1.question;
+  if (q1Hint) q1Hint.textContent = q1.hint;
+  if (q2Text) q2Text.textContent = q2.question;
+  if (q2Hint) q2Hint.textContent = q2.hint;
 
   if (state.metDateCorrect) {
-    $('#q1').classList.add('hidden');
-    $('#q2').classList.remove('hidden');
+    const q1El = $('#q1');
+    const q2El = $('#q2');
+    if (q1El) q1El.classList.add('hidden');
+    if (q2El) q2El.classList.remove('hidden');
   }
 
   setupQuestion('q1', q1, () => {
-    $('#q1').classList.add('hidden');
-    $('#q2').classList.remove('hidden');
+    const q1El = $('#q1');
+    const q2El = $('#q2');
+    if (q1El) q1El.classList.add('hidden');
+    if (q2El) q2El.classList.remove('hidden');
     const q2Input = $('#q2Input');
-    if (q2Input && !window.matchMedia('(pointer: coarse)').matches) q2Input.focus();
+    if (q2Input && !window.matchMedia('(pointer: coarse)').matches) {
+      try { q2Input.focus(); } catch (e) {}
+    }
   });
 
   setupQuestion('q2', q2, () => {
     setTimeout(() => {
-      $('#dateQuestions').classList.add('hidden');
+      const el = $('#dateQuestions');
+      if (el) el.classList.add('hidden');
       showMainSite();
     }, 1600);
   });
@@ -435,39 +1011,36 @@ function setupQuestion(id, config, onCorrect) {
 }
 
 /* ---------- MAIN SITE ---------- */
-let siteReady = false;
-
-function showMainSite() {
-  const main = $('#mainSite');
-  if (!main) return;
-  main.classList.remove('hidden');
-  initMainSite();
-}
-
 function initMainSite() {
-  if (siteReady) return;
-  siteReady = true;
-  initHero();
-  initBtsLounge();
-  initTimeline();
-  initHeroes();
-  initStats();
-  initSpinner();
-  initMood();
-  initEnoughRoom();
-  initHug();
-  initFear();
-  initVoice();
-  initDreamJob();
-  initFavorites();
-  initGallery();
-  initDreamMap();
-  initLetter();
-  initQuiz();
+  if (mainSiteInitialized) return;
+  mainSiteInitialized = true;
+
+  try { initHero(); } catch (e) { console.warn('[main] initHero failed:', e); }
+  try { initBtsLounge(); } catch (e) { console.warn('[main] initBtsLounge failed:', e); }
+  try { initTimeline(); } catch (e) { console.warn('[main] initTimeline failed:', e); }
+  try { initHeroes(); } catch (e) { console.warn('[main] initHeroes failed:', e); }
+  try { initStats(); } catch (e) { console.warn('[main] initStats failed:', e); }
+  try { initSpinner(); } catch (e) { console.warn('[main] initSpinner failed:', e); }
+  try { initMood(); } catch (e) { console.warn('[main] initMood failed:', e); }
+  try { initEnoughRoom(); } catch (e) { console.warn('[main] initEnoughRoom failed:', e); }
+  try { initHug(); } catch (e) { console.warn('[main] initHug failed:', e); }
+  try { initFear(); } catch (e) { console.warn('[main] initFear failed:', e); }
+  try { initVoice(); } catch (e) { console.warn('[main] initVoice failed:', e); }
+  try { initDreamJob(); } catch (e) { console.warn('[main] initDreamJob failed:', e); }
+  try { initFavorites(); } catch (e) { console.warn('[main] initFavorites failed:', e); }
+  try { initGallery(); } catch (e) { console.warn('[main] initGallery failed:', e); }
+  try { initDreamMap(); } catch (e) { console.warn('[main] initDreamMap failed:', e); }
+  try { initLetter(); } catch (e) { console.warn('[main] initLetter failed:', e); }
+  try { initQuiz(); } catch (e) { console.warn('[main] initQuiz failed:', e); }
+  try { initBtsHero(); } catch (e) { console.warn('[main] initBtsHero failed:', e); }
+  try { initBtsBtsLounge(); } catch (e) { console.warn('[main] initBtsBtsLounge failed:', e); }
+  try { initBtsQuiz(); } catch (e) { console.warn('[main] initBtsQuiz failed:', e); }
+  try { initBtsRandomSections(); } catch (e) { console.warn('[main] initBtsRandomSections failed:', e); }
+
   updateFinalTrigger(true);
   const finalBtn = $('#finalTriggerBtn');
   if (finalBtn) finalBtn.addEventListener('click', openFinalSurprise);
-  initReveal();
+  try { initReveal(); } catch (e) { console.warn('[main] initReveal failed:', e); }
 }
 
 /* ---------- HERO ---------- */
@@ -486,7 +1059,6 @@ function initHero() {
     if (subtitleEl) typeWriter(subtitleEl, CONFIG.hero.typewriter, 60);
   }, 900);
 
-  // Floating fact rotation
   if (factEl && CONFIG.hero.floatingFacts && CONFIG.hero.floatingFacts.length) {
     let idx = 0;
     factEl.textContent = CONFIG.hero.floatingFacts[0];
@@ -502,7 +1074,6 @@ function initHero() {
     }
   }
 
-  // Tap to reveal full typewriter
   if (subtitleEl) {
     subtitleEl.addEventListener('click', () => {
       if (subtitleEl._finish) subtitleEl._finish();
@@ -510,7 +1081,10 @@ function initHero() {
   }
 
   if (beginBtn) {
-    beginBtn.addEventListener('click', () => smoothScrollTo($('#timelineSection')));
+    beginBtn.addEventListener('click', () => {
+      const targetId = CONFIG.hero.scrollTarget || 'btsSection';
+      smoothScrollTo(document.getElementById(targetId));
+    });
   }
 
   if (!reducedMotion && particleBox) {
@@ -1058,7 +1632,6 @@ function initLetter() {
 
   const full = CONFIG.loveLetter.text || '';
 
-  // Screen reader version (full text)
   const sr = document.createElement('span');
   sr.className = 'sr-only';
   sr.textContent = full;
@@ -1183,6 +1756,7 @@ function resetFinal() {
   });
   const buttons = $('#finalButtons');
   if (buttons) buttons.classList.remove('hidden');
+  hideBtsFinalReward();
 }
 
 function showAccepted(fresh) {
@@ -1203,6 +1777,8 @@ function showAccepted(fresh) {
     after.classList.remove('hidden');
     setTimeout(() => after.classList.add('show'), 500);
   }
+
+  revealBtsFinalReward();
 
   const actions = $('#finalActions');
   if (actions) actions.classList.remove('hidden');
@@ -1229,6 +1805,8 @@ function openFinalSurprise() {
   const overlay = $('#finalSurprise');
   if (!overlay || !overlay.classList.contains('hidden')) return;
   const F = CONFIG.finalSurprise;
+
+  initBtsFinalNegative();
 
   if (!finalReady) {
     finalReady = true;
@@ -1276,7 +1854,7 @@ async function sharePromise() {
     try {
       await navigator.share({ title: F.certificateTitle, text });
       return;
-    } catch (e) { /* fall through to clipboard */ }
+    } catch (e) {}
   }
   try {
     await navigator.clipboard.writeText(text);
@@ -1366,17 +1944,14 @@ function downloadCertificate() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  // Gold outer border
   ctx.strokeStyle = '#E8D5A3';
   ctx.lineWidth = 6;
   ctx.strokeRect(50, 50, W - 100, H - 100);
 
-  // Purple inner border
   ctx.strokeStyle = '#7B4B9E';
   ctx.lineWidth = 2;
   ctx.strokeRect(78, 78, W - 156, H - 156);
 
-  // Corner hearts
   ctx.font = '44px serif';
   ctx.fillStyle = '#E8D5A3';
   ctx.textAlign = 'center';
@@ -1415,7 +1990,6 @@ function downloadCertificate() {
   ctx.font = '22px Georgia, serif';
   ctx.fillText(CONFIG.finalSurprise.certificateDate, cx, 765);
 
-  // Seal
   ctx.beginPath();
   ctx.arc(cx, 820, 40, 0, Math.PI * 2);
   ctx.fillStyle = '#7B4B9E';
@@ -1448,30 +2022,6 @@ function downloadCertificate() {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }, 'image/png');
-}
-
-/* ---------- MUSIC ---------- */
-function initMusic() {
-  const btn = $('#musicBtn');
-  const panel = $('#musicPanel');
-  const placeholder = $('#musicPlaceholder');
-  const embed = $('#musicEmbed');
-  if (!btn || !panel) return;
-
-  if (placeholder && CONFIG.music && CONFIG.music.placeholder) {
-    placeholder.textContent = CONFIG.music.placeholder;
-  }
-
-  if (embed && CONFIG.music && CONFIG.music.embed) {
-    embed.innerHTML = CONFIG.music.embed;
-    if (placeholder) placeholder.style.display = 'none';
-  }
-
-  btn.addEventListener('click', () => {
-    const open = panel.classList.toggle('hidden') === false;
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.classList.toggle('active', open);
-  });
 }
 
 /* ---------- KONAMI ---------- */
@@ -1509,13 +2059,39 @@ function checkHash404() {
 
 /* ---------- BOOT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[boot] DOMContentLoaded');
+
   if (typeof CONFIG === 'undefined') {
-    console.error('CONFIG not found. Make sure config.js loads before script.js.');
+    console.error('[boot] CONFIG is not defined. config.js may have a syntax error or did not load. Showing fallback.');
+    try { document.body.classList.remove('loading'); } catch (e) {}
+    const loader = document.getElementById('loader');
+    if (loader) loader.classList.add('hidden');
+    const pinGate = document.getElementById('pinGate');
+    if (pinGate) pinGate.classList.remove('hidden');
     return;
   }
-  applyTexts();
-  initMusic();
-  initKonami();
-  checkHash404();
-  initLoader();
+
+  console.log('[boot] CONFIG loaded. Version:', (CONFIG.meta && CONFIG.meta.version) || 'unknown');
+  console.log('[boot] initial state:', getState());
+
+  try { applyBtsMobileFlags(); } catch (e) { console.warn('[boot] applyBtsMobileFlags failed:', e); }
+  try { preloadBtsAssets(); } catch (e) { console.warn('[boot] preloadBtsAssets failed:', e); }
+  try { applyTexts(); } catch (e) { console.warn('[boot] applyTexts failed:', e); }
+  try { initMusic(); } catch (e) { console.warn('[boot] initMusic failed:', e); }
+  try { initKonami(); } catch (e) { console.warn('[boot] initKonami failed:', e); }
+  try { checkHash404(); } catch (e) { console.warn('[boot] checkHash404 failed:', e); }
+
+  try {
+    initLoader();
+  } catch (e) {
+    console.error('[boot] initLoader threw:', e);
+    try { document.body.classList.remove('loading'); } catch (e2) {}
+    const loader = document.getElementById('loader');
+    if (loader) loader.classList.add('hidden');
+    try { startFlow(); } catch (e3) {
+      console.error('[boot] fallback startFlow threw:', e3);
+      const gate = document.getElementById('pinGate');
+      if (gate) gate.classList.remove('hidden');
+    }
+  }
 });

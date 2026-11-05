@@ -1,6 +1,7 @@
 /* ============================================================
    CONFIG — Deepa: The Forever Duo
-   All text lives here. To change the site's voice, edit this file only.
+   All text and asset mapping live here.
+   To change the site's voice, edit this file only.
    ============================================================ */
 
 const CONFIG = {
@@ -11,7 +12,7 @@ const CONFIG = {
     owner: "Biju Maharjan",
     recipient: "Deepa Chaudhary Magar",
     occasion: "Happy Birthday, my love",
-    version: "1.0 — for November 11",
+    version: "1.1 — for November 11",
     borrows:
       "Some BTS references, some MLBB inside jokes, some borrowed courage.",
   },
@@ -21,18 +22,21 @@ const CONFIG = {
      ---------------------------------------------------------- */
   pin: "1111",
   pinEasterEgg: {
-    // typing these wrong pins unlocks special messages
     "0420": "Close. That's a rank, not a date. Try again, my carry.",
     "0000": "That's the respawn timer, not the answer.",
-    1234: "I love you, but no. That's every default password on Earth.",
-    1110: "Off by one. Story of our ping.",
+    "1234": "I love you, but no. That's every default password on Earth.",
+    "1110": "Off by one. Story of our ping.",
+    "1314": "One three one four. Cute. But our date is the one that actually matters, my love.",
+    "2020": "That's the year the world stopped. We started later. Try again, my carry.",
+    "1122": "So close in spirit. Try the day the world got luckier, two digits, twice.",
+    "12345": "That's five digits. You type faster than you read. Retry, my love."
   },
 
   /* ----------------------------------------------------------
      LOADING
      ---------------------------------------------------------- */
   loading: {
-    minDurationMs: 9000,
+    minDurationMs: 30000,
     skipAfterMs: 4000,
     skipLabel: "Skip the spell, my love →",
     loadingMessages: [
@@ -109,12 +113,103 @@ const CONFIG = {
     typewriter: "You are the best thing that happened to my Nepal chapter.",
     beginButton: "Press to begin",
     eyebrow: "Happy Birthday",
+    scrollTarget: "btsSection",
     floatingFacts: [
       "Currently: the best Aamon in my lobby.",
       "Status: officially the love of my life.",
       "Ping: 0. Feelings: 1000.",
       "Buffs stolen: an undisclosed amount. Never pressing charges.",
+      "Currently: Pied Piper on repeat and your name in every verse.",
+      "Mood: waiting for your next 'good morning' text like it's a buff.",
     ],
+  },
+
+  /* ----------------------------------------------------------
+     BTS ASSETS — THE PNG SYSTEM
+     Twenty images, each with a stable .bts-png-NN class.
+     Each placement can include layout: { width, height, top, right,
+     bottom, left, rotation }. Values are CSS lengths/angles.
+     Example: { src: "1.png", corner: "tl", layout: {
+       width: "120px", height: "120px", top: "2rem",
+       left: "1rem", rotation: "-8deg" } }
+     For responsive differences, edit that image's class in style.css.
+     basePath + filename combine at runtime.
+     ---------------------------------------------------------- */
+  btsAssets: {
+    basePath: "assets/bts/",
+    preload: true,
+    mobile: {
+      reduceAnimations: true,
+      staticOnly: false,
+      hideSides: false,
+      hideCorners: false,
+    },
+    loading: {
+      corners: [
+        { src: "1.png",  corner: "tl", animation: "bob" },
+        { src: "2.png",  corner: "tr", animation: "sway" },
+        { src: "3.png",  corner: "bl", animation: "pulse" },
+        { src: "4.png",  corner: "br", animation: "drift" },
+      ],
+    },
+    pin: {
+      corners: [
+        { src: "5.png",  corner: "tl", animation: "heartbeat" },
+        { src: "6.png",  corner: "tr", animation: "tilt" },
+        { src: "7.png",  corner: "bl", animation: "orbit" },
+        { src: "8.png",  corner: "br", animation: "wave" },
+      ],
+    },
+    dates: {
+      corners: [
+        { src: "9.png",  corner: "tl", animation: "glow" },
+        { src: "10.png", corner: "tr", animation: "bob" },
+        { src: "11.png", corner: "bl", animation: "sway" },
+        { src: "12.png", corner: "br", animation: "pulse" },
+      ],
+    },
+    hero: {
+      sides: [
+        { src: "13.png", side: "left",  animation: "drift" },
+        { src: "14.png", side: "right", animation: "heartbeat" },
+      ],
+    },
+    btsLounge: {
+      sides: [
+        { src: "15.png", side: "left",  animation: "sway" },
+        { src: "16.png", side: "right", animation: "glow" },
+      ],
+    },
+    quiz: {
+      sides: [
+        { src: "17.png", side: "left",  animation: "orbit" },
+        { src: "18.png", side: "right", animation: "tilt" },
+      ],
+    },
+    finalOverlay: {
+      negative: {
+        src: "19.png",
+        corners: ["tl", "tr", "bl", "br"],
+        animation: "pulse",
+      },
+      afterYes: {
+        src: "20.png",
+        animation: "heartbeat",
+      },
+    },
+    randomSections: {
+      pool: [
+        "1.png", "2.png", "3.png", "4.png",
+        "5.png", "6.png", "7.png", "8.png",
+        "9.png", "10.png", "11.png", "12.png",
+      ],
+      animationPool: [
+        "bob", "sway", "pulse", "drift",
+        "heartbeat", "tilt", "orbit", "wave", "glow",
+      ],
+      shuffleOncePerSession: true,
+      defaultSide: "alternate",
+    },
   },
 
   /* ----------------------------------------------------------
@@ -402,6 +497,10 @@ const CONFIG = {
       "The way your voice goes quiet when you're about to say something real.",
       "The way you still get shy when I compliment you.",
       "The way you exist. That's it. That's the reason.",
+      "The way you hum along to Dynamite and pretend you didn't notice you were doing it.",
+      "The way you defend Spring Day like it's a person. Honestly, it kind of is.",
+      "The way you look when Pied Piper comes on. Like the song was written for us.",
+      "The way you keep going, even when the whole day has been a mess. Especially then.",
     ],
   },
 
@@ -532,15 +631,6 @@ const CONFIG = {
   /* ----------------------------------------------------------
      GALLERY
      ---------------------------------------------------------- */
-  // gallery: [
-  //   { caption: "The first time I heard your voice.", gradient: "linear-gradient(135deg, #7B4B9E, #2C1E4A)" },
-  //   { caption: "The match where you carried me as Aamon.", gradient: "linear-gradient(135deg, #6B3FA0, #1A2440)" },
-  //   { caption: "Boba tea and you. The only two things I need.", gradient: "linear-gradient(135deg, #F1D8F3, #A77CCB)" },
-  //   { caption: "Momo. Because you deserve every good thing.", gradient: "linear-gradient(135deg, #E8A0BF, #7B4B9E)" },
-  //   { caption: "The park date we haven't had yet. It's coming.", gradient: "linear-gradient(135deg, #A8D8B9, #4A2C6B)" },
-  //   { caption: "Busan. Paris. Anywhere. As long as it's you.", gradient: "linear-gradient(135deg, #7FB3D5, #141C2E)" }
-  // ],
-
   gallery: [
     {
       caption: "The first time I saw you on May 5th",
@@ -591,18 +681,6 @@ const CONFIG = {
       caption: "Finally Calling you my baby",
       image: "assets/photos/callingbaby.jpg",
     },
-    // {
-    //   caption: "Momo. Because you deserve every good thing.",
-    //   image: "assets/photos/photo4.jpg",
-    // },
-    // {
-    //   caption: "The park date we haven't had yet. It's coming.",
-    //   image: "assets/photos/photo5.jpg",
-    // },
-    // {
-    //   caption: "Busan. Paris. Anywhere. As long as it's you.",
-    //   image: "assets/photos/photo6.jpg",
-    // },
   ],
 
   /* ----------------------------------------------------------
@@ -716,6 +794,10 @@ const CONFIG = {
     certificateDate: "November 11, 2026",
     afterAcceptMessage:
       "You just made me the luckiest man alive. Also: I knew you'd pick one of those two. I rigged it. Both are yes.",
+    afterAcceptExtra:
+      "And yes — you found the last one. The twentieth. If you're seeing this, you've reached the end of the page and the start of everything else. Every section, every side, every corner was waiting for you. And now I am too.",
+    png20RevealLine:
+      "This is 20. The last one. The one that only shows up when you say yes.",
     shareLine:
       "Send this to anyone who doubts us. Send it to yourself on a bad day. It doesn't expire.",
   },
@@ -725,16 +807,20 @@ const CONFIG = {
      ---------------------------------------------------------- */
   easterEggs: {
     konami: {
-      // press ↑ ↑ ↓ ↓ ← → ← → B A on desktop
       message:
         "You found it. Of course you did. You're my carry. Here is the secret: I have loved you since May 5. I will love you on every May 5 after this one. That's the whole trick.",
       label: "Secret unlocked",
     },
     secretCorner: {
-      // tap the bottom-right corner of the hero 3 times
       message:
         "You found the corner. There is nothing here. Except this: you are loved. Okay, maybe that is something.",
       label: "Corner found",
+    },
+    png13Tap: {
+      message:
+        "You found me. I'd follow you anywhere. Even to Busan. Even to Paris. Even into the next lobby.",
+      label: "Portrait tapped",
+      taps: 5,
     },
     wrongPin:
       "Nice try. But my heart only opens for one person. She knows who she is.",
@@ -746,17 +832,53 @@ const CONFIG = {
   },
 
   /* ----------------------------------------------------------
-     MUSIC
+     MUSIC — AUTOPLAY + TRACK PICKER
      ---------------------------------------------------------- */
   music: {
+    autoplayAfterPin: true,
+    loop: true,
+    defaultTrack: "pied-piper",
+    volume: 0.55,
     label: "Pied Piper mode",
-    hint: "Tap to play our playlist. Warning: may cause spontaneous smiling.",
+    hint: "Tap a track to set the mood.",
+    mobileLabel: "Music",
+    panelTitle: "Our playlist",
+    panelSubtitle: "BTS on repeat. As it should be.",
     placeholder:
-      "Playlist coming soon. For now, imagine 'Pied Piper' on repeat.",
-    playlistTitle: "Our Playlist",
-    playlistSubtitle: "BTS, some Latin, and whatever reminds me of you.",
-    embed:
-      '<audio controls style="width: 100%;"><source src="assets/music/pied-piper.mp3" type="audio/mpeg"></audio>',
+      "Add your MP3s to assets/music/ and they will appear here.",
+    autoplayFallbackMessage:
+      "Tap the music button to start our soundtrack. Browsers won't let me do it for you.",
+    nowPlayingPrefix: "Now playing: ",
+    tracks: [
+      {
+        id: "pied-piper",
+        title: "Pied Piper",
+        artist: "BTS",
+        src: "assets/music/pied-piper.mp3",
+        note: "The song we chose. It plays first for a reason.",
+      },
+      {
+        id: "dynamite",
+        title: "Dynamite",
+        artist: "BTS",
+        src: "assets/music/dynamite.mp3",
+        note: "For the days that need a little light.",
+      },
+      {
+        id: "spring-day",
+        title: "Spring Day",
+        artist: "BTS",
+        src: "assets/music/spring-day.mp3",
+        note: "For the days I miss you a little too much.",
+      },
+      {
+        id: "butter",
+        title: "Butter",
+        artist: "BTS",
+        src: "assets/music/butter.mp3",
+        note: "Smooth. Like the way you said yes.",
+      },
+    ],
   },
 
   /* ----------------------------------------------------------
@@ -788,6 +910,10 @@ const CONFIG = {
     musicLabel: "Pied Piper mode",
     musicHint:
       "Tap to play our playlist. Warning: may cause spontaneous smiling.",
+    musicAutoplayBlocked:
+      "Tap the music button to start our soundtrack. Browsers won't let me do it for you.",
+    musicTrackPicked: "Playing: ",
+    png13Secret: "You tapped the portrait. Of course you did.",
     moodPrompt: "Pick the one that fits.",
     spinnerPrompt: "Tap to spin.",
     hugPrompt: "How many do you need? Take as many as you want.",
@@ -799,7 +925,7 @@ const CONFIG = {
   },
 
   /* ----------------------------------------------------------
-     SECTIONS (for heading text)
+     SECTIONS (heading text + side art assignments)
      ---------------------------------------------------------- */
   sections: {
     timelineSection: { title: "Our Story", subtitle: "Every moment led here." },
@@ -856,7 +982,26 @@ const CONFIG = {
       title: "Our Dream Map",
       subtitle: "Tap each pin. They all lead to you.",
     },
-    quizSection: { title: "How Well Do You Know Us?" },
+    quizSection: { title: "How Well Do You Know Us?", subtitle: "" },
     letterSection: { title: "A letter for you", subtitle: "" },
+    sideArt: {
+      heroSection:       { mode: "explicit", source: "hero" },
+      btsLoungeSection:  { mode: "explicit", source: "btsLounge" },
+      quizSection:       { mode: "explicit", source: "quiz" },
+      timelineSection:   { mode: "random", side: "alternate" },
+      heroesSection:     { mode: "random", side: "alternate" },
+      gamingStatsSection:{ mode: "random", side: "alternate" },
+      enoughSection:     { mode: "random", side: "alternate" },
+      moodSection:       { mode: "random", side: "alternate" },
+      spinnerSection:    { mode: "random", side: "alternate" },
+      hugSection:        { mode: "random", side: "alternate" },
+      fearSection:       { mode: "random", side: "alternate" },
+      favoritesSection:  { mode: "random", side: "alternate" },
+      voiceSection:      { mode: "random", side: "alternate" },
+      dreamJobSection:   { mode: "random", side: "alternate" },
+      gallerySection:    { mode: "random", side: "alternate" },
+      dreamSection:      { mode: "random", side: "alternate" },
+      letterSection:     { mode: "random", side: "alternate" },
+    },
   },
 };
