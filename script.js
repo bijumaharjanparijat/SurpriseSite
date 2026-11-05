@@ -794,6 +794,7 @@ function showPinGate() {
   const gate = document.getElementById('pinGate');
   if (!gate) { console.error('[pin] #pinGate not found'); return; }
   gate.classList.remove('hidden');
+  document.body.classList.add('prelude-active');
   try { initBtsPin(); } catch (e) { console.warn('[pin] initBtsPin failed:', e); }
   try { initPinGate(); } catch (e) { console.error('[pin] initPinGate failed:', e); }
   console.log('[pin] gate visible');
@@ -803,6 +804,7 @@ function showDateQuestions() {
   const el = document.getElementById('dateQuestions');
   if (!el) { console.error('[date] #dateQuestions not found'); return; }
   el.classList.remove('hidden');
+  document.body.classList.add('prelude-active');
   try { initBtsDates(); } catch (e) { console.warn('[date] initBtsDates failed:', e); }
   try { initDateQuestions(); } catch (e) { console.error('[date] initDateQuestions failed:', e); }
   console.log('[date] questions visible');
@@ -812,6 +814,7 @@ function showMainSite() {
   const main = document.getElementById('mainSite');
   if (!main) { console.error('[main] #mainSite not found'); return; }
   main.classList.remove('hidden');
+  document.body.classList.remove('prelude-active');
   try { initMainSite(); } catch (e) { console.error('[main] initMainSite failed:', e); }
   console.log('[main] site visible');
 }
@@ -1260,12 +1263,14 @@ function initSpinner() {
   if (!btn || !result) return;
 
   const S = CONFIG.reasonsSpinner;
-  const cooldownMs = (S.cooldownHours || 4) * 60 * 60 * 1000;
+  const cooldownHours = Number.isFinite(S.cooldownHours) ? Math.max(0, S.cooldownHours) : 0;
+  const cooldownMs = cooldownHours * 60 * 60 * 1000;
+  let spinning = false;
 
   function refreshState() {
     const last = getState().interactions.spinnerLastSpin || 0;
     const elapsed = Date.now() - last;
-    if (elapsed < cooldownMs) {
+    if (cooldownMs > 0 && elapsed < cooldownMs) {
       btn.disabled = true;
       if (label) label.textContent = S.cooldownLabel;
       return true;
@@ -1282,8 +1287,12 @@ function initSpinner() {
   }
 
   btn.addEventListener('click', () => {
-    if (btn.disabled) return;
+    if (btn.disabled || spinning) return;
+    spinning = true;
+    btn.disabled = true;
     btn.classList.add('spinning');
+    result.textContent = '';
+    result.classList.remove('show');
 
     setTimeout(() => {
       const reasons = S.reasons || [];
@@ -1293,6 +1302,7 @@ function initSpinner() {
       void result.offsetWidth;
       result.classList.add('show');
       btn.classList.remove('spinning');
+      spinning = false;
 
       setInteraction('spinnerLastSpin', Date.now());
       refreshState();
@@ -1346,7 +1356,13 @@ function initEnoughRoom() {
 
   const R = CONFIG.reassurance;
   const messages = R.messages || [];
+  const lastThingBtn = $('#enoughFinalBtn');
   let idx = getState().interactions.reassurancePressed || 0;
+
+  if (lastThingBtn) {
+    lastThingBtn.textContent = CONFIG.ui.enoughFinalButton || 'One more last thing…';
+    lastThingBtn.addEventListener('click', openFinalSurprise);
+  }
 
   if (idx > 0 && idx <= messages.length) {
     msgEl.textContent = messages[idx - 1];
@@ -1725,17 +1741,13 @@ function updateFinalTrigger(quiet) {
   const btn = $('#finalTriggerBtn');
   if (!btn) return;
   const s = getState();
-  if (!(hasInteractedEnough() || s.finalSurpriseUnlocked)) return;
-
-  if (s.finalSurpriseUnlocked) {
-    btn.textContent = CONFIG.ui.replayLabel;
-  }
+  // The first invitation lives on The Enough Room victory card. The footer
+  // trigger becomes a replay link only after the promise has been accepted.
+  if (!s.finalSurpriseUnlocked) return;
+  btn.textContent = CONFIG.ui.replayLabel;
 
   if (btn.classList.contains('hidden')) {
     btn.classList.remove('hidden');
-    if (!quiet && !s.finalSurpriseUnlocked) {
-      toast(CONFIG.ui.nudge);
-    }
   }
 }
 
@@ -1744,15 +1756,20 @@ let finalReady = false;
 let confettiOn = false;
 let finalTimers = [];
 let lastFocus = null;
+let certificateDownloadUrl = '';
+let certificateDownloadPromise = null;
 
 function resetFinal() {
   ['#finalIntro', '#finalMessage', '#finalButtons', '#finalThanks', '#finalAfter'].forEach((q) => {
     const el = $(q);
     if (el) el.classList.remove('show');
   });
-  ['#finalThanks', '#finalAfter', '#finalActions', '#finalClose'].forEach((q) => {
+  ['#finalThanks', '#finalAfter', '#certificatePreview', '#finalActions', '#finalClose'].forEach((q) => {
     const el = $(q);
-    if (el) el.classList.add('hidden');
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('show');
+    }
   });
   const buttons = $('#finalButtons');
   if (buttons) buttons.classList.remove('hidden');
@@ -1773,10 +1790,15 @@ function showAccepted(fresh) {
 
   const after = $('#finalAfter');
   if (after && CONFIG.finalSurprise.afterAcceptMessage) {
-    after.textContent = CONFIG.finalSurprise.afterAcceptMessage;
+    after.textContent = [
+      CONFIG.finalSurprise.afterAcceptMessage,
+      CONFIG.finalSurprise.afterAcceptExtra,
+    ].filter(Boolean).join('\n\n');
     after.classList.remove('hidden');
     setTimeout(() => after.classList.add('show'), 500);
   }
+
+  showCertificatePreview();
 
   revealBtsFinalReward();
 
@@ -1790,6 +1812,42 @@ function showAccepted(fresh) {
     startConfetti();
     updateFinalTrigger(true);
   }
+  prepareCertificateDownload();
+}
+
+function showCertificatePreview() {
+  const preview = $('#certificatePreview');
+  if (!preview) return;
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '';
+  };
+  const F = CONFIG.finalSurprise;
+  setText('certificateTitle', F.certificateTitle);
+  setText('certificateIntro', CONFIG.ui.certIntro);
+  setText('certificateNames', F.certificateNames);
+  setText('certificateRole', `${CONFIG.ui.certBound} ${CONFIG.ui.certRole}`);
+  setText('certificateDedication', F.certificateDedication);
+  setText('certificateDate', F.certificateDate);
+  setText('certificateSignature', F.certificateSignature);
+
+  const cast = $('#certificateCast');
+  if (cast && cast.dataset.ready !== 'true') {
+    const images = Array.from({ length: 19 }, (_, index) => index + 1);
+    images.forEach((number) => {
+      const img = document.createElement('img');
+      img.className = `certificate-stamp bts-png-${String(number).padStart(2, '0')}`;
+      img.alt = '';
+      img.decoding = 'async';
+      img.src = `${getBtsBasePath()}${number}.png`;
+      cast.appendChild(img);
+    });
+    cast.dataset.ready = 'true';
+  }
+
+  preview.classList.remove('hidden');
+  requestAnimationFrame(() => preview.classList.add('show'));
 }
 
 function closeFinal() {
@@ -1849,7 +1907,13 @@ function openFinalSurprise() {
 
 async function sharePromise() {
   const F = CONFIG.finalSurprise;
-  const text = `${F.certificateTitle}\n${F.certificateNames}\n${F.certificateLine}\n${F.certificateDate}`;
+  const text = [
+    F.certificateTitle,
+    F.certificateNames,
+    F.certificateLine,
+    F.certificateDate,
+    F.certificateShareMessage,
+  ].filter(Boolean).join('\n');
   if (navigator.share) {
     try {
       await navigator.share({ title: F.certificateTitle, text });
@@ -1858,7 +1922,7 @@ async function sharePromise() {
   }
   try {
     await navigator.clipboard.writeText(text);
-    toast('Copied. Now send it to whoever needs to know.');
+    toast(CONFIG.finalSurprise.certificateShareMessage || 'Copied with love.');
   } catch (e) {
     toast('Could not copy. Screenshot it. That works too.');
   }
@@ -1929,99 +1993,237 @@ function startConfetti() {
 }
 
 /* ---------- CERTIFICATE ---------- */
-function downloadCertificate() {
-  const W = 1400;
-  const H = 900;
+function waitForImage(img) {
+  if (img.complete) return Promise.resolve(img.naturalWidth > 0 ? img : null);
+  return new Promise((resolve) => {
+    img.addEventListener('load', () => resolve(img), { once: true });
+    img.addEventListener('error', () => resolve(null), { once: true });
+  });
+}
+
+function fitCanvasText(ctx, text, x, y, maxWidth, fontSize, family, weight) {
+  let size = fontSize;
+  const weightText = weight ? `${weight} ` : '';
+  ctx.textAlign = 'center';
+  ctx.font = `${weightText}${size}px ${family}`;
+  while (ctx.measureText(text).width > maxWidth && size > 24) {
+    size -= 2;
+    ctx.font = `${weightText}${size}px ${family}`;
+  }
+  ctx.fillText(text, x, y, maxWidth);
+}
+
+function drawCertificateHeart(ctx, x, y, size, color, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.scale(size / 20, size / 20);
+  ctx.beginPath();
+  ctx.moveTo(0, 7);
+  ctx.bezierCurveTo(-16, -3, -9, -14, 0, -6);
+  ctx.bezierCurveTo(9, -14, 16, -3, 0, 7);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawImageContained(ctx, img, x, y, maxWidth, maxHeight) {
+  if (!img || !img.naturalWidth || !img.naturalHeight) return;
+  const scale = Math.min(maxWidth / img.naturalWidth, maxHeight / img.naturalHeight);
+  const width = img.naturalWidth * scale;
+  const height = img.naturalHeight * scale;
+  ctx.save();
+  if (img.classList && img.classList.contains('bts-png-17')) {
+    ctx.filter = 'brightness(0) invert(0.82)';
+  }
+  ctx.drawImage(img, x + (maxWidth - width) / 2, y + (maxHeight - height) / 2, width, height);
+  ctx.restore();
+}
+
+async function createCertificateBlob() {
+  const preview = $('#certificatePreview');
+  if (preview && preview.classList.contains('hidden')) showCertificatePreview();
+  const stamps = await Promise.all($$('#certificateCast img').map(waitForImage));
+  const W = 2200;
+  const H = 1500;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is unavailable in this browser.');
 
-  const grad = ctx.createLinearGradient(0, 0, W, H);
-  grad.addColorStop(0, '#0E1220');
-  grad.addColorStop(0.5, '#2A1B45');
-  grad.addColorStop(1, '#4A2C6B');
-  ctx.fillStyle = grad;
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#090d18');
+  bg.addColorStop(0.48, '#26173f');
+  bg.addColorStop(1, '#11182a');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.strokeStyle = '#E8D5A3';
+  const halo = ctx.createRadialGradient(W / 2, 430, 30, W / 2, 430, 980);
+  halo.addColorStop(0, 'rgba(167, 124, 203, 0.26)');
+  halo.addColorStop(1, 'rgba(167, 124, 203, 0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(232, 213, 163, 0.22)';
+  ctx.shadowBlur = 26;
+  ctx.strokeStyle = '#e8d5a3';
   ctx.lineWidth = 6;
-  ctx.strokeRect(50, 50, W - 100, H - 100);
-
-  ctx.strokeStyle = '#7B4B9E';
+  ctx.strokeRect(48, 48, W - 96, H - 96);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(194, 163, 225, 0.7)';
   ctx.lineWidth = 2;
-  ctx.strokeRect(78, 78, W - 156, H - 156);
+  ctx.strokeRect(76, 76, W - 152, H - 152);
 
-  ctx.font = '44px serif';
-  ctx.fillStyle = '#E8D5A3';
-  ctx.textAlign = 'center';
-  ctx.fillText('♡', 120, 155);
-  ctx.fillText('♡', W - 120, 155);
-  ctx.fillText('♡', 120, H - 115);
-  ctx.fillText('♡', W - 120, H - 115);
+  for (let i = 0; i < 44; i++) {
+    const x = 120 + ((i * 347) % (W - 240));
+    const y = 115 + ((i * 191) % 890);
+    drawCertificateHeart(ctx, x, y, 8 + (i % 4) * 2, i % 3 ? '#c2a3e1' : '#e8d5a3', 0.14 + (i % 3) * 0.04);
+  }
+  [[120, 120], [W - 120, 120], [120, H - 120], [W - 120, H - 120]].forEach(([x, y], i) => {
+    drawCertificateHeart(ctx, x, y, 34, i % 2 ? '#e8d5a3' : '#c2a3e1', 0.92);
+  });
 
+  const F = CONFIG.finalSurprise;
   const cx = W / 2;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e8d5a3';
+  ctx.font = '600 26px Georgia, serif';
+  ctx.letterSpacing = '7px';
+  ctx.fillText('A PROMISE, IN EVERY TIMELINE', cx, 180);
+  ctx.letterSpacing = '1px';
+  ctx.fillStyle = '#fff8f0';
+  fitCanvasText(ctx, F.certificateTitle.toUpperCase(), cx, 305, 1800, 64, 'Georgia, serif', 'bold');
+  ctx.fillStyle = '#c2a3e1';
+  ctx.font = 'italic 34px Georgia, serif';
+  ctx.fillText(CONFIG.ui.certIntro, cx, 400);
+  ctx.fillStyle = '#fff8f0';
+  fitCanvasText(ctx, F.certificateNames, cx, 535, 1840, 66, 'Georgia, serif', 'bold');
 
-  ctx.fillStyle = '#E8D5A3';
-  ctx.font = 'bold 58px Georgia, serif';
-  ctx.fillText(CONFIG.finalSurprise.certificateTitle, cx, 250);
+  ctx.strokeStyle = 'rgba(232, 213, 163, 0.68)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(480, 590);
+  ctx.lineTo(W - 480, 590);
+  ctx.stroke();
+  drawCertificateHeart(ctx, cx, 590, 24, '#e8d5a3');
 
-  ctx.fillStyle = '#C2A3E1';
-  ctx.font = 'italic 26px Georgia, serif';
-  ctx.fillText(CONFIG.ui.certIntro, cx, 340);
-
-  ctx.fillStyle = '#FFF8F0';
-  ctx.font = 'bold 50px Georgia, serif';
-  ctx.fillText(CONFIG.finalSurprise.certificateNames, cx, 440);
-
-  ctx.fillStyle = '#C2A3E1';
-  ctx.font = 'italic 30px Georgia, serif';
-  ctx.fillText(CONFIG.ui.certBound, cx, 515);
-
-  ctx.fillStyle = '#E8D5A3';
-  ctx.font = 'bold 42px Georgia, serif';
-  ctx.fillText(CONFIG.ui.certRole, cx, 595);
-
-  ctx.fillStyle = '#C2A3E1';
-  ctx.font = '24px Georgia, serif';
-  ctx.fillText(CONFIG.finalSurprise.certificateLine, cx, 680);
-
-  ctx.fillStyle = '#9C8AA8';
-  ctx.font = '22px Georgia, serif';
-  ctx.fillText(CONFIG.finalSurprise.certificateDate, cx, 765);
+  ctx.fillStyle = '#e8d5a3';
+  fitCanvasText(ctx, `${CONFIG.ui.certBound} ${CONFIG.ui.certRole}`.toUpperCase(), cx, 685, 1700, 46, 'Georgia, serif', 'bold');
+  ctx.font = 'italic 31px Georgia, serif';
+  ctx.fillText(F.certificateLine, cx, 760, 1760);
+  ctx.fillStyle = '#ddd0e8';
+  ctx.font = 'italic 34px Georgia, serif';
+  ctx.fillText(F.certificateDedication, cx, 825, 1740);
 
   ctx.beginPath();
-  ctx.arc(cx, 820, 40, 0, Math.PI * 2);
-  ctx.fillStyle = '#7B4B9E';
+  ctx.arc(cx, 935, 53, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(123, 75, 158, 0.72)';
   ctx.fill();
-  ctx.strokeStyle = '#E8D5A3';
+  ctx.strokeStyle = '#e8d5a3';
   ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.fillStyle = '#FFF8F0';
-  ctx.font = 'bold 22px Georgia, serif';
-  ctx.fillText('♡', cx, 828);
+  ctx.fillStyle = '#fff8f0';
+  ctx.font = '58px Georgia, serif';
+  ctx.fillText('∞', cx, 955);
+  ctx.fillStyle = '#e8d5a3';
+  ctx.font = '600 19px Georgia, serif';
+  ctx.fillText('ALWAYS', cx, 1018);
 
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const file = new File([blob], 'duo-partner-certificate.png', { type: 'image/png' });
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff8f0';
+  ctx.font = '28px Georgia, serif';
+  ctx.fillText(F.certificateDate, 330, 1095);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f4c2c2';
+  ctx.font = 'italic 31px Georgia, serif';
+  ctx.fillText(F.certificateSignature, W - 330, 1095);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(194, 163, 225, 0.86)';
+  ctx.font = '600 18px Georgia, serif';
+  ctx.letterSpacing = '5px';
+  ctx.fillText('OUR LITTLE BTS MEMORY PARADE', cx, 1160);
+  ctx.letterSpacing = '0px';
+  ctx.strokeStyle = 'rgba(194, 163, 225, 0.36)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(135, 1185);
+  ctx.lineTo(W - 135, 1185);
+  ctx.stroke();
 
-    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({
-        files: [file],
-        title: CONFIG.finalSurprise.certificateTitle
-      }).catch(() => {});
-      return;
-    }
+  const stripLeft = 135;
+  const stripWidth = W - stripLeft * 2;
+  const cell = stripWidth / Math.max(stamps.length, 1);
+  stamps.forEach((img, index) => {
+    if (!img) return;
+    const x = stripLeft + cell * index;
+    drawImageContained(ctx, img, x + 4, 1200, cell - 8, 182);
+    ctx.beginPath();
+    ctx.arc(x + cell / 2, 1400, 3, 0, Math.PI * 2);
+    ctx.fillStyle = index % 2 ? '#c2a3e1' : '#e8d5a3';
+    ctx.fill();
+  });
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = file.name;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }, 'image/png');
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not create certificate image.')), 'image/png');
+  });
+}
+
+function prepareCertificateDownload() {
+  const button = $('#certBtn');
+  if (certificateDownloadUrl) {
+    if (button) button.disabled = false;
+    return Promise.resolve(certificateDownloadUrl);
+  }
+  if (certificateDownloadPromise) return certificateDownloadPromise;
+
+  const readyLabel = button
+    ? (button.dataset.readyLabel || (button.dataset.readyLabel = button.textContent))
+    : '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Preparing your keepsake…';
+  }
+
+  certificateDownloadPromise = createCertificateBlob()
+    .then((blob) => {
+      certificateDownloadUrl = URL.createObjectURL(blob);
+      if (button) {
+        button.disabled = false;
+        button.textContent = readyLabel;
+      }
+      return certificateDownloadUrl;
+    })
+    .catch((error) => {
+      console.error('[certificate] preparation failed:', error);
+      if (button) {
+        button.disabled = false;
+        button.textContent = readyLabel;
+      }
+      toast('I could not prepare it just yet. Please try once more, my love.');
+      return '';
+    })
+    .finally(() => { certificateDownloadPromise = null; });
+  return certificateDownloadPromise;
+}
+
+function downloadCertificate() {
+  if (!getState().finalSurpriseUnlocked) return;
+  if (!certificateDownloadUrl) {
+    prepareCertificateDownload();
+    return;
+  }
+
+  // Use the prepared blob URL so this click starts the download synchronously
+  // while the browser still recognizes the visitor's interaction.
+  const link = document.createElement('a');
+  link.download = 'forever-duo-certificate.png';
+  link.href = certificateDownloadUrl;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  toast(CONFIG.finalSurprise.certificateDownloadMessage || 'Saved with love. Keep our promise close.');
 }
 
 /* ---------- KONAMI ---------- */

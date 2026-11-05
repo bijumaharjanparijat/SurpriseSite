@@ -192,6 +192,7 @@
         <div class="enough-final hidden" id="enoughFinal">
           <p class="victory-label" id="victoryLabel"></p>
           <p class="victory-subtext" id="victorySubtext"></p>
+          <button class="enough-final-btn" id="enoughFinalBtn" type="button">One more last thing…</button>
         </div>
       </div>
     </section>
@@ -294,7 +295,7 @@
 
   <!-- ==================== FINAL SURPRISE OVERLAY ==================== -->
   <!-- BTS 19.png corners injected by script.js from CONFIG.btsAssets.finalOverlay.negative -->
-  <!-- BTS 20.png reward inside #finalReward, revealed on "yes" -->
+  <!-- BTS group artwork inside #finalReward, revealed on "yes" -->
   <div class="final-surprise hidden" id="finalSurprise" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="finalIntro">
     <canvas id="confettiCanvas" aria-hidden="true"></canvas>
     <div class="final-content">
@@ -304,6 +305,24 @@
       <div class="final-buttons" id="finalButtons"></div>
       <p class="final-thanks hidden" id="finalThanks" aria-live="polite"></p>
       <p class="final-after hidden" id="finalAfter"></p>
+      <section class="certificate-preview hidden" id="certificatePreview" aria-label="Your forever duo certificate">
+        <div class="certificate-frame">
+          <span class="certificate-corner-mark mark-one" aria-hidden="true">♡</span>
+          <span class="certificate-corner-mark mark-two" aria-hidden="true">♡</span>
+          <p class="certificate-kicker">A PROMISE, IN EVERY TIMELINE</p>
+          <h2 class="certificate-title" id="certificateTitle"></h2>
+          <p class="certificate-intro" id="certificateIntro"></p>
+          <h3 class="certificate-names" id="certificateNames"></h3>
+          <p class="certificate-role" id="certificateRole"></p>
+          <p class="certificate-dedication" id="certificateDedication"></p>
+          <div class="certificate-seal" aria-hidden="true"><span>∞</span></div>
+          <div class="certificate-signoff">
+            <span id="certificateDate"></span>
+            <span id="certificateSignature"></span>
+          </div>
+          <div class="certificate-cast" id="certificateCast" aria-hidden="true"></div>
+        </div>
+      </section>
       <div class="final-actions hidden" id="finalActions">
         <button class="cert-btn" id="certBtn" type="button">Download Your Certificate 💜</button>
         <button class="share-btn" id="shareBtn" type="button">Share the promise</button>

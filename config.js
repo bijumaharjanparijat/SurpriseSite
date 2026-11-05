@@ -126,7 +126,7 @@ const CONFIG = {
 
   /* ----------------------------------------------------------
      BTS ASSETS — THE PNG SYSTEM
-     Twenty images, each with a stable .bts-png-NN class.
+     Nineteen images, each with a stable .bts-png-NN class.
      Each placement can include layout: { width, height, top, right,
      bottom, left, rotation }. Values are CSS lengths/angles.
      Example: { src: "1.png", corner: "tl", layout: {
@@ -136,7 +136,9 @@ const CONFIG = {
      basePath + filename combine at runtime.
      ---------------------------------------------------------- */
   btsAssets: {
-    basePath: "assets/bts/",
+    // Transparent padding was trimmed from the rendered copies so each cutout
+    // fills its CSS box consistently. The original files remain in assets/bts/.
+    basePath: "assets/bts/trimmed/",
     preload: true,
     mobile: {
       reduceAnimations: true,
@@ -193,7 +195,7 @@ const CONFIG = {
         animation: "pulse",
       },
       afterYes: {
-        src: "20.png",
+        src: "18.png",
         animation: "heartbeat",
       },
     },
@@ -472,7 +474,7 @@ const CONFIG = {
     title: "Spin for a reason",
     subtitle:
       "One tap, one reason I love you. The wheel is rigged. Every answer is sincere.",
-    cooldownHours: 4,
+    cooldownHours: 0,
     buttonLabel: "Spin the wheel",
     cooldownLabel:
       "Come back in a few hours. I ran out of reasons (I did not).",
@@ -793,11 +795,16 @@ const CONFIG = {
     certificateLine: "Valid in every rank, every country, and every timeline.",
     certificateDate: "November 11, 2026",
     afterAcceptMessage:
-      "You just made me the luckiest man alive. Also: I knew you'd pick one of those two. I rigged it. Both are yes.",
+      "Thank you for choosing us, my love. From now on, every ordinary day is one I get to share with my favorite person.",
     afterAcceptExtra:
-      "And yes — you found the last one. The twentieth. If you're seeing this, you've reached the end of the page and the start of everything else. Every section, every side, every corner was waiting for you. And now I am too.",
-    png20RevealLine:
-      "This is 20. The last one. The one that only shows up when you say yes.",
+      "I choose you in every rank, every country, and every timeline. Today, tomorrow, and all the ordinary mornings in between.",
+    certificateDedication:
+      "I choose you in every timeline. Today, tomorrow, and every ordinary day in between.",
+    certificateSignature: "With all my love, Biju",
+    certificateDownloadMessage:
+      "Saved with all my love, Deepa. Keep our little piece of forever close. 💜",
+    certificateShareMessage:
+      "Our forever promise is ready to share. Sending you all my love. 💜",
     shareLine:
       "Send this to anyone who doubts us. Send it to yourself on a bad day. It doesn't expire.",
   },
@@ -894,6 +901,7 @@ const CONFIG = {
     buffWaiting: "Buff in transit…",
     buffDone: "You got it, my carry.",
     enoughLast: "One more, just for you.",
+    enoughFinalButton: "One more last thing…",
     thanks: "You just made me the luckiest man alive.",
     replayLabel: "See our certificate again",
     nudge: "Something new just appeared at the bottom.",
