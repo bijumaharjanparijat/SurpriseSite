@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>For Deepa 💜</title>
+  <title>SURPRISE WEBSITE</title>
   <meta name="description" content="A little something for the person who makes my ordinary days feel like a victory screen." />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#0E1220" />
@@ -11,13 +11,18 @@
   <meta property="og:title" content="For Deepa 💜" />
   <meta property="og:description" content="A little something, just for you." />
   <meta property="og:type" content="website" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💜%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="assets/bts/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="loading">
+
+  <div class="cosmic-ambience" id="cosmicAmbience" aria-hidden="true">
+    <div class="cosmic-stars"></div>
+    <div class="cosmic-mist"></div>
+  </div>
 
   <!-- ==================== NO-JS FALLBACK ==================== -->
   <noscript>
@@ -192,7 +197,6 @@
         <div class="enough-final hidden" id="enoughFinal">
           <p class="victory-label" id="victoryLabel"></p>
           <p class="victory-subtext" id="victorySubtext"></p>
-          <button class="enough-final-btn" id="enoughFinalBtn" type="button">One more last thing…</button>
         </div>
       </div>
     </section>
@@ -288,7 +292,7 @@
 
     <!-- ========== FINAL TRIGGER ========== -->
     <section class="section final-trigger-section" id="finalTriggerSection">
-      <button class="final-trigger-btn hidden" id="finalTriggerBtn" type="button" data-text="ui.finalTrigger">One last thing…</button>
+      <button class="final-trigger-btn hidden" id="finalTriggerBtn" type="button" data-text="ui.finalTrigger">Click here for a Surprise 🎁</button>
     </section>
 
   </main>
@@ -296,7 +300,7 @@
   <!-- ==================== FINAL SURPRISE OVERLAY ==================== -->
   <!-- BTS 19.png corners injected by script.js from CONFIG.btsAssets.finalOverlay.negative -->
   <!-- BTS group artwork inside #finalReward, revealed on "yes" -->
-  <div class="final-surprise hidden" id="finalSurprise" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="finalIntro">
+  <div class="final-surprise hidden" id="finalSurprise" role="dialog" aria-modal="true" aria-hidden="true" tabindex="-1" aria-labelledby="finalIntro">
     <canvas id="confettiCanvas" aria-hidden="true"></canvas>
     <div class="final-content">
       <div class="bts-final-reward hidden" id="finalReward" aria-hidden="true"></div>
@@ -333,13 +337,35 @@
 
   <!-- ==================== MUSIC ==================== -->
   <button id="musicBtn" class="music-btn" type="button" aria-label="Open music panel" aria-expanded="false">
-    <span class="music-icon" aria-hidden="true">♫</span>
+    <span class="music-cover-disc music-art-pied-piper" id="musicButtonCover" aria-hidden="true"><span class="music-cover-label">PP</span></span>
     <span class="music-label" data-text="ui.musicLabel">Pied Piper mode</span>
   </button>
   <div id="musicPanel" class="music-panel hidden" role="region" aria-label="Music">
     <p class="music-panel-title" id="musicPanelTitle" data-text="music.panelTitle">Our playlist</p>
     <p class="music-panel-subtitle" id="musicPanelSubtitle" data-text="music.panelSubtitle">BTS on repeat. As it should be.</p>
     <p class="music-hint" id="musicHint" data-text="music.hint">Tap a track to set the mood.</p>
+    <div class="music-now-playing" aria-live="polite">
+      <span class="music-now-label">Now playing</span>
+      <span class="music-now-title" id="musicNowTitle">Choose a song</span>
+      <span class="music-now-state" id="musicNowState">Paused</span>
+    </div>
+    <div class="music-transport" aria-label="Playback controls">
+      <button class="music-control-btn" id="musicPrevBtn" type="button" aria-label="Previous song" title="Previous song">|◀</button>
+      <button class="music-control-btn music-play-btn" id="musicPlayBtn" type="button" aria-label="Play" title="Play">▶</button>
+      <button class="music-control-btn" id="musicStopBtn" type="button" aria-label="Stop" title="Stop">■</button>
+      <button class="music-control-btn" id="musicNextBtn" type="button" aria-label="Next song" title="Next song">▶|</button>
+    </div>
+    <div class="music-mode-controls" aria-label="Playlist modes">
+      <button class="music-mode-btn" id="musicShuffleBtn" type="button" aria-pressed="false">Shuffle off</button>
+      <button class="music-mode-btn" id="musicRepeatBtn" type="button" aria-pressed="true">Repeat all</button>
+    </div>
+    <div class="music-volume-row">
+      <button class="music-volume-step" id="musicVolumeDown" type="button" aria-label="Lower volume">−</button>
+      <label class="music-volume-label" for="musicVolume">Volume</label>
+      <input id="musicVolume" class="music-volume-slider" type="range" min="0" max="1" step="0.01" value="0.55" aria-label="Volume" />
+      <button class="music-volume-step" id="musicVolumeUp" type="button" aria-label="Raise volume">+</button>
+      <output class="music-volume-value" id="musicVolumeValue" for="musicVolume">55%</output>
+    </div>
     <div class="music-tracks" id="musicTracks"></div>
     <p class="music-autoplay-hint hidden" id="musicAutoplayHint" data-text="music.autoplayFallbackMessage">Tap the music button to start our soundtrack. Browsers won't let me do it for you.</p>
     <div class="music-placeholder" id="musicPlaceholder"></div>

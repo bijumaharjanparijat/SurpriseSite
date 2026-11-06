@@ -6,21 +6,14 @@
    ============================================================ */
 
 const STATE_KEY = 'deepa_site_state_v2';
-const BTS_SHUFFLE_KEY = 'deepa_bts_shuffle_v1';
 let memState = null;
 
 /* ---------- RESET HANDLING ---------- */
-if (/[?&]hard_reset\b/.test(location.search)) {
-  try { localStorage.clear(); } catch (e) {}
-  try { sessionStorage.clear(); } catch (e) {}
-  history.replaceState(null, '', location.pathname);
-  console.log('[boot] hard_reset applied — localStorage and sessionStorage cleared');
-} else if (/[?&]reset\b/.test(location.search)) {
-  try { localStorage.removeItem(STATE_KEY); } catch (e) {}
-  try { sessionStorage.removeItem(BTS_SHUFFLE_KEY); } catch (e) {}
-  history.replaceState(null, '', location.pathname);
-  console.log('[boot] reset applied — state and bts shuffle cleared');
-}
+// Every visit starts at the beginning, while unrelated site storage is preserved.
+try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload();
+});
 
 /* ---------- STATE ---------- */
 function defaultState() {
@@ -142,10 +135,32 @@ function smoothScrollTo(el) {
   el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
 }
 
-function toast(msg) {
+function initCosmicAmbience() {
+  const layer = $('#cosmicAmbience');
+  if (!layer || layer.dataset.ready === 'true') return;
+  layer.dataset.ready = 'true';
+  if (reducedMotion) return;
+
+  const hearts = document.createElement('div');
+  hearts.className = 'cosmic-hearts';
+  for (let i = 0; i < 18; i++) {
+    const heart = document.createElement('span');
+    heart.className = 'cosmic-heart';
+    heart.textContent = i % 3 === 0 ? '♥' : '♡';
+    heart.style.left = `${(i * 37 + 9) % 100}%`;
+    heart.style.setProperty('--heart-size', `${13 + ((i * 7) % 15)}px`);
+    heart.style.setProperty('--heart-duration', `${17 + ((i * 11) % 17)}s`);
+    heart.style.setProperty('--heart-delay', `${-((i * 5) % 24)}s`);
+    hearts.appendChild(heart);
+  }
+  layer.appendChild(hearts);
+}
+
+function toast(msg, extraClass) {
   const region = $('#toastRegion') || document.body;
   const t = document.createElement('div');
   t.className = 'toast';
+  if (extraClass) t.classList.add(extraClass);
   t.setAttribute('role', 'status');
   t.textContent = msg;
   region.appendChild(t);
@@ -218,8 +233,10 @@ function preloadBtsAssets() {
     }
   });
 
-  if (CONFIG.btsAssets.randomSections && Array.isArray(CONFIG.btsAssets.randomSections.pool)) {
-    CONFIG.btsAssets.randomSections.pool.forEach((src) => paths.push(base + src));
+  if (CONFIG.sections && CONFIG.sections.sideArt) {
+    Object.values(CONFIG.sections.sideArt).forEach((spec) => {
+      if (spec && spec.src) paths.push(base + spec.src);
+    });
   }
 
   if (CONFIG.btsAssets.finalOverlay) {
@@ -227,7 +244,8 @@ function preloadBtsAssets() {
       paths.push(base + CONFIG.btsAssets.finalOverlay.negative.src);
     }
     if (CONFIG.btsAssets.finalOverlay.afterYes) {
-      paths.push(base + CONFIG.btsAssets.finalOverlay.afterYes.src);
+      const reward = CONFIG.btsAssets.finalOverlay.afterYes;
+      paths.push((reward.basePath || base) + reward.src);
     }
   }
 
@@ -285,6 +303,7 @@ function buildBtsCorner(spec, parent) {
   const img = document.createElement('img');
   img.className = 'bts-corner ' + spec.corner;
   applyBtsImageSettings(img, spec);
+  img.dataset.btsSrc = spec.src;
   img.alt = '';
   img.setAttribute('aria-hidden', 'true');
   img.decoding = 'async';
@@ -300,6 +319,9 @@ function buildBtsSide(spec, parent, side) {
   const resolvedSide = spec.side || side || 'left';
   img.className = 'bts-side ' + resolvedSide;
   applyBtsImageSettings(img, spec);
+  img.dataset.btsSrc = spec.src;
+  img.dataset.btsSide = resolvedSide;
+  img.dataset.btsAnim = spec.animation || '';
   img.alt = '';
   img.setAttribute('aria-hidden', 'true');
   img.decoding = 'async';
@@ -309,11 +331,34 @@ function buildBtsSide(spec, parent, side) {
   return img;
 }
 
+function setBtsSectionSides(parent, specs, sectionClass) {
+  if (!parent) return [];
+  const expected = specs || [];
+  const existing = Array.from(parent.querySelectorAll(':scope > .bts-side'));
+  const isCurrent = existing.length === expected.length && expected.every((spec, index) =>
+    existing[index].dataset.btsSrc === spec.src &&
+    existing[index].dataset.btsSide === (spec.side || 'left') &&
+    existing[index].dataset.btsAnim === (spec.animation || '') &&
+    existing[index].classList.contains(sectionClass)
+  );
+  if (isCurrent) return existing;
+
+  existing.forEach((img) => img.remove());
+  return expected.map((spec) => buildBtsSide({
+    ...spec,
+    className: Array.from(new Set([spec.className, sectionClass].filter(Boolean))).join(' '),
+  }, parent));
+}
+
 function initBtsCorners(group, parent) {
   if (!group || !parent) return;
   const specs = group.corners || [];
   const existing = parent.querySelectorAll('.bts-corner');
-  if (existing.length === specs.length) return;
+  const isCurrent = existing.length === specs.length && specs.every((spec, index) =>
+    existing[index].dataset.btsSrc === spec.src &&
+    existing[index].classList.contains(spec.corner)
+  );
+  if (isCurrent) return;
   existing.forEach((el) => el.remove());
   specs.forEach((spec) => buildBtsCorner(spec, parent));
 }
@@ -339,12 +384,10 @@ function initBtsDates() {
 function initBtsHero() {
   const hero = document.getElementById('heroSection');
   if (!hero || !CONFIG.btsAssets || !CONFIG.btsAssets.hero) return;
-  const existing = hero.querySelectorAll('.bts-side');
-  if (existing.length === (CONFIG.btsAssets.hero.sides || []).length) return;
-  existing.forEach((el) => el.remove());
   const specs = CONFIG.btsAssets.hero.sides || [];
-  specs.forEach((spec) => {
-    const img = buildBtsSide(spec, hero);
+  const images = setBtsSectionSides(hero, specs, 'bts-art-hero');
+  images.forEach((img, index) => {
+    const spec = specs[index];
     if (img && CONFIG.easterEggs && CONFIG.easterEggs.png13Tap && spec.src === '13.png') {
       img.classList.add('bts-tappable');
       img.setAttribute('role', 'button');
@@ -384,78 +427,30 @@ function handlePng13Tap() {
 function initBtsBtsLounge() {
   const section = document.getElementById('btsSection');
   if (!section || !CONFIG.btsAssets || !CONFIG.btsAssets.btsLounge) return;
-  const existing = section.querySelectorAll('.bts-side');
-  if (existing.length === (CONFIG.btsAssets.btsLounge.sides || []).length) return;
-  existing.forEach((el) => el.remove());
-  (CONFIG.btsAssets.btsLounge.sides || []).forEach((spec) => {
-    buildBtsSide(spec, section);
-  });
+  setBtsSectionSides(section, CONFIG.btsAssets.btsLounge.sides || [], 'bts-art-lounge');
 }
 
 function initBtsQuiz() {
   const section = document.getElementById('quizSection');
   if (!section || !CONFIG.btsAssets || !CONFIG.btsAssets.quiz) return;
-  const existing = section.querySelectorAll('.bts-side');
-  if (existing.length === (CONFIG.btsAssets.quiz.sides || []).length) return;
-  existing.forEach((el) => el.remove());
-  (CONFIG.btsAssets.quiz.sides || []).forEach((spec) => {
-    buildBtsSide(spec, section);
-  });
+  setBtsSectionSides(section, CONFIG.btsAssets.quiz.sides || [], 'bts-art-quiz');
 }
 
-function getBtsShuffle() {
-  if (!CONFIG.btsAssets || !CONFIG.btsAssets.randomSections) return [];
-  const pool = CONFIG.btsAssets.randomSections.pool || [];
-  const animPool = CONFIG.btsAssets.randomSections.animationPool || ['bob'];
-  const persist = CONFIG.btsAssets.randomSections.shuffleOncePerSession !== false;
-
-  if (persist) {
-    try {
-      const stored = JSON.parse(sessionStorage.getItem(BTS_SHUFFLE_KEY));
-      if (stored && Array.isArray(stored) && stored.length === pool.length) {
-        return stored;
-      }
-    } catch (e) {}
-  }
-
-  const shuffled = pool.slice();
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  const combined = shuffled.map((src) => ({
-    src,
-    animation: animPool[Math.floor(Math.random() * animPool.length)]
-  }));
-
-  if (persist) {
-    try { sessionStorage.setItem(BTS_SHUFFLE_KEY, JSON.stringify(combined)); } catch (e) {}
-  }
-  return combined;
-}
-
-function initBtsRandomSections() {
+function initBtsSectionArt() {
   if (!CONFIG.sections || !CONFIG.sections.sideArt) return;
-  if (!CONFIG.btsAssets || !CONFIG.btsAssets.randomSections) return;
   const artMap = CONFIG.sections.sideArt;
-  const shuffled = getBtsShuffle();
-  if (!shuffled.length) return;
-
-  const randomSectionIds = Object.keys(artMap).filter(
-    (key) => artMap[key].mode === 'random'
-  );
-
-  let sideToggle = 0;
-  let poolIdx = 0;
-  randomSectionIds.forEach((sectionKey) => {
+  Object.keys(artMap).forEach((sectionKey) => {
+    const spec = artMap[sectionKey];
+    if (!spec || !spec.src) return;
     const el = document.getElementById(sectionKey);
     if (!el) return;
-    if (el.querySelector('.bts-side')) return;
-    if (poolIdx >= shuffled.length) poolIdx = 0;
-    const spec = shuffled[poolIdx++];
-    const side = sideToggle % 2 === 0 ? 'left' : 'right';
-    sideToggle++;
-    buildBtsSide({ src: spec.src, side, animation: spec.animation }, el);
+    const artClass = spec.className || `bts-art-${sectionKey.replace(/Section$/, '').toLowerCase()}`;
+    setBtsSectionSides(el, [{
+      src: spec.src,
+      side: spec.side || 'left',
+      animation: spec.animation || 'bob',
+      className: artClass,
+    }], artClass);
   });
 }
 
@@ -492,7 +487,7 @@ function revealBtsFinalReward() {
   img.alt = '';
   img.setAttribute('aria-hidden', 'true');
   img.decoding = 'async';
-  img.src = getBtsBasePath() + cfg.src;
+  img.src = (cfg.basePath || getBtsBasePath()) + cfg.src;
   applyBtsImageSettings(img, cfg);
   container.appendChild(img);
 
@@ -514,15 +509,52 @@ let currentTrackId = '';
 let currentSrc = '';
 let autoplayAttempted = false;
 let autoplayRetryAttached = false;
+let shuffleEnabled = false;
+let repeatMode = 'all';
+let stoppedByUser = false;
+
+function musicArtClass(track) {
+  return `music-art-${String(track && track.id || 'pied-piper').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+function renderMusicCover(element, track, baseClasses) {
+  if (!element) return;
+  const trackId = track ? track.id : '';
+  if (element.dataset.trackId === trackId) return;
+  element.className = `${baseClasses} ${musicArtClass(track)}`;
+  element.dataset.trackId = trackId;
+  while (element.firstChild) element.removeChild(element.firstChild);
+
+  const label = document.createElement('span');
+  label.className = 'music-cover-label';
+  label.textContent = track ? (track.coverLabel || (track.title || track.id).slice(0, 2).toUpperCase()) : '♪';
+  if (track && track.cover) {
+    const image = document.createElement('img');
+    image.className = 'music-cover-image';
+    image.src = track.cover;
+    image.alt = '';
+    image.decoding = 'async';
+    image.loading = 'lazy';
+    label.hidden = true;
+    image.addEventListener('error', () => {
+      image.remove();
+      label.hidden = false;
+    }, { once: true });
+    element.appendChild(image);
+  }
+  element.appendChild(label);
+}
 
 function getAudio() {
   if (audioEl) return audioEl;
   audioEl = new Audio();
-  audioEl.loop = CONFIG.music.loop !== false;
+  audioEl.loop = false;
   audioEl.volume = typeof CONFIG.music.volume === 'number' ? CONFIG.music.volume : 0.55;
   audioEl.preload = 'auto';
   audioEl.addEventListener('play', updateTrackUI);
   audioEl.addEventListener('pause', updateTrackUI);
+  audioEl.addEventListener('volumechange', updateTrackUI);
+  audioEl.addEventListener('ended', handleTrackEnded);
   audioEl.addEventListener('error', () => {
     console.warn('[music] Audio element error. Check that the file exists at the configured path.');
     updateTrackUI();
@@ -534,11 +566,58 @@ function updateTrackUI() {
   const btn = document.getElementById('musicBtn');
   const a = getAudio();
   const isPlaying = !a.paused && a.src;
-  if (btn) btn.classList.toggle('playing', isPlaying);
+  const tracks = (CONFIG.music && CONFIG.music.tracks) || [];
+  const track = tracks.find((item) => item.id === currentTrackId);
+  if (btn) {
+    btn.classList.toggle('playing', isPlaying);
+    const panel = document.getElementById('musicPanel');
+    const panelOpen = panel && !panel.classList.contains('hidden');
+    btn.setAttribute('aria-label', `${isPlaying ? 'Music playing' : 'Music paused'}${track ? `: ${track.title}` : ''}. ${panelOpen ? 'Close' : 'Open'} music controls`);
+  }
   document.querySelectorAll('.music-track').forEach((t) => {
     const matches = t.dataset.trackId === currentTrackId;
+    t.classList.toggle('selected', matches);
     t.classList.toggle('active', matches && isPlaying);
   });
+
+  const cover = document.getElementById('musicButtonCover');
+  renderMusicCover(cover, track, 'music-cover-disc');
+  const musicLabel = btn && btn.querySelector('.music-label');
+  if (musicLabel) musicLabel.textContent = track ? track.title : CONFIG.music.label;
+  if (cover) {
+    cover.className = `music-cover-disc ${musicArtClass(track)}`;
+    const label = cover.querySelector('.music-cover-label');
+    if (label) label.textContent = track ? (track.coverLabel || track.title.slice(0, 2).toUpperCase()) : '♪';
+    cover.dataset.trackId = track ? track.id : '';
+  }
+
+  const nowTitle = document.getElementById('musicNowTitle');
+  const nowState = document.getElementById('musicNowState');
+  if (nowTitle) nowTitle.textContent = track ? `${track.title} · ${track.artist || ''}` : 'Choose a song';
+  if (nowState) nowState.textContent = isPlaying ? 'Playing' : (stoppedByUser ? 'Stopped' : 'Paused');
+
+  const playBtn = document.getElementById('musicPlayBtn');
+  if (playBtn) {
+    playBtn.textContent = isPlaying ? 'Ⅱ' : '▶';
+    playBtn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    playBtn.title = isPlaying ? 'Pause' : 'Play';
+  }
+  const repeatBtn = document.getElementById('musicRepeatBtn');
+  if (repeatBtn) {
+    const repeatLabels = { all: 'Repeat all', one: 'Repeat one', off: 'Repeat off' };
+    repeatBtn.textContent = repeatLabels[repeatMode] || repeatLabels.all;
+    repeatBtn.setAttribute('aria-pressed', repeatMode === 'off' ? 'false' : 'true');
+    repeatBtn.dataset.mode = repeatMode;
+  }
+  const shuffleBtn = document.getElementById('musicShuffleBtn');
+  if (shuffleBtn) {
+    shuffleBtn.textContent = shuffleEnabled ? 'Shuffle on' : 'Shuffle off';
+    shuffleBtn.setAttribute('aria-pressed', shuffleEnabled ? 'true' : 'false');
+  }
+  const volume = document.getElementById('musicVolume');
+  const volumeValue = document.getElementById('musicVolumeValue');
+  if (volume && document.activeElement !== volume) volume.value = String(a.volume);
+  if (volumeValue) volumeValue.textContent = `${Math.round(a.volume * 100)}%`;
 }
 
 function buildTrackList() {
@@ -551,6 +630,9 @@ function buildTrackList() {
     btn.type = 'button';
     btn.className = 'music-track';
     btn.dataset.trackId = track.id;
+    const cover = document.createElement('span');
+    renderMusicCover(cover, track, 'music-track-cover music-cover-art');
+    cover.setAttribute('aria-hidden', 'true');
     const icon = document.createElement('span');
     icon.className = 'music-track-icon';
     icon.setAttribute('aria-hidden', 'true');
@@ -569,6 +651,7 @@ function buildTrackList() {
     body.appendChild(title);
     body.appendChild(artist);
     if (track.note) body.appendChild(note);
+    btn.appendChild(cover);
     btn.appendChild(icon);
     btn.appendChild(body);
     btn.addEventListener('click', () => handleTrackClick(track.id));
@@ -585,23 +668,22 @@ function setTrack(id) {
   if (currentSrc !== track.src) {
     a.src = track.src;
     currentSrc = track.src;
+  } else if (a.ended) {
+    a.currentTime = 0;
   }
   currentTrackId = id;
-  a.play().then(() => {
-    const hint = document.getElementById('musicAutoplayHint');
-    if (hint) hint.classList.add('hidden');
-    updateTrackUI();
-  }).catch(() => {
-    onAutoplayBlocked();
-    updateTrackUI();
-  });
+  stoppedByUser = false;
+  requestMusicPlay();
+  updateTrackUI();
 }
 
-function handleTrackClick(id) {
+function requestMusicPlay() {
   const a = getAudio();
-  if (currentTrackId === id) {
-    if (a.paused) {
-      a.play().then(() => {
+  try {
+    const result = a.play();
+    if (result && typeof result.then === 'function') {
+      result.then(() => {
+        stoppedByUser = false;
         const hint = document.getElementById('musicAutoplayHint');
         if (hint) hint.classList.add('hidden');
         updateTrackUI();
@@ -609,6 +691,18 @@ function handleTrackClick(id) {
         onAutoplayBlocked();
         updateTrackUI();
       });
+    }
+  } catch (e) {
+    onAutoplayBlocked();
+  }
+}
+
+function handleTrackClick(id) {
+  const a = getAudio();
+  if (currentTrackId === id) {
+    if (a.paused) {
+      stoppedByUser = false;
+      requestMusicPlay();
     } else {
       a.pause();
       updateTrackUI();
@@ -616,6 +710,59 @@ function handleTrackClick(id) {
   } else {
     setTrack(id);
   }
+}
+
+function playPauseMusic() {
+  const tracks = (CONFIG.music && CONFIG.music.tracks) || [];
+  const a = getAudio();
+  if (!currentTrackId || !a.src) {
+    const first = tracks.find((track) => track.id === currentTrackId)
+      || tracks.find((track) => track.id === (CONFIG.music.defaultTrack || ''))
+      || tracks[0];
+    if (first) setTrack(first.id);
+    return;
+  }
+  if (a.paused) {
+    stoppedByUser = false;
+    requestMusicPlay();
+  } else {
+    a.pause();
+  }
+}
+
+function chooseNextTrack(direction = 1) {
+  const tracks = (CONFIG.music && CONFIG.music.tracks) || [];
+  if (!tracks.length) return;
+  if (shuffleEnabled && tracks.length > 1) {
+    const choices = tracks.filter((track) => track.id !== currentTrackId);
+    const chosen = choices[Math.floor(Math.random() * choices.length)];
+    if (chosen) setTrack(chosen.id);
+    return;
+  }
+  const index = tracks.findIndex((track) => track.id === currentTrackId);
+  const nextIndex = index < 0
+    ? (direction > 0 ? 0 : tracks.length - 1)
+    : (index + direction + tracks.length) % tracks.length;
+  setTrack(tracks[nextIndex].id);
+}
+
+function handleTrackEnded() {
+  if (repeatMode === 'one') {
+    const a = getAudio();
+    a.currentTime = 0;
+    requestMusicPlay();
+  } else if (repeatMode === 'all') {
+    chooseNextTrack(1);
+  } else {
+    stoppedByUser = false;
+    updateTrackUI();
+  }
+}
+
+function changeMusicVolume(amount) {
+  const a = getAudio();
+  a.volume = Math.max(0, Math.min(1, Math.round((a.volume + amount) * 100) / 100));
+  updateTrackUI();
 }
 
 function tryAutoplayAfterPin() {
@@ -654,11 +801,55 @@ function onAutoplayBlocked() {
 
 function initMusic() {
   currentTrackId = (CONFIG.music && CONFIG.music.defaultTrack) || '';
+  repeatMode = (CONFIG.music && ['all', 'one', 'off'].includes(CONFIG.music.repeatMode))
+    ? CONFIG.music.repeatMode
+    : 'all';
   buildTrackList();
 
   const btn = document.getElementById('musicBtn');
   const panel = document.getElementById('musicPanel');
   if (!btn || !panel) return;
+
+  const playBtn = document.getElementById('musicPlayBtn');
+  const stopBtn = document.getElementById('musicStopBtn');
+  const prevBtn = document.getElementById('musicPrevBtn');
+  const nextBtn = document.getElementById('musicNextBtn');
+  const shuffleBtn = document.getElementById('musicShuffleBtn');
+  const repeatBtn = document.getElementById('musicRepeatBtn');
+  const volumeSlider = document.getElementById('musicVolume');
+  const volumeDown = document.getElementById('musicVolumeDown');
+  const volumeUp = document.getElementById('musicVolumeUp');
+  if (playBtn) playBtn.addEventListener('click', playPauseMusic);
+  if (stopBtn) stopBtn.addEventListener('click', () => {
+    const a = getAudio();
+    a.pause();
+    try { a.currentTime = 0; } catch (e) {}
+    stoppedByUser = true;
+    updateTrackUI();
+  });
+  if (prevBtn) prevBtn.addEventListener('click', () => {
+    const a = getAudio();
+    if (a.currentTime > 3) {
+      a.currentTime = 0;
+      if (a.paused) playPauseMusic();
+      else updateTrackUI();
+    } else chooseNextTrack(-1);
+  });
+  if (nextBtn) nextBtn.addEventListener('click', () => chooseNextTrack(1));
+  if (shuffleBtn) shuffleBtn.addEventListener('click', () => {
+    shuffleEnabled = !shuffleEnabled;
+    updateTrackUI();
+  });
+  if (repeatBtn) repeatBtn.addEventListener('click', () => {
+    repeatMode = repeatMode === 'all' ? 'one' : (repeatMode === 'one' ? 'off' : 'all');
+    updateTrackUI();
+  });
+  if (volumeSlider) volumeSlider.addEventListener('input', () => {
+    getAudio().volume = Number(volumeSlider.value);
+    updateTrackUI();
+  });
+  if (volumeDown) volumeDown.addEventListener('click', () => changeMusicVolume(-0.1));
+  if (volumeUp) volumeUp.addEventListener('click', () => changeMusicVolume(0.1));
 
   const placeholder = document.getElementById('musicPlaceholder');
   const tracksContainer = document.getElementById('musicTracks');
@@ -673,6 +864,7 @@ function initMusic() {
   btn.addEventListener('click', () => {
     const open = panel.classList.toggle('hidden') === false;
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', open ? 'Close music controls' : 'Open music controls');
     btn.classList.toggle('active', open);
   });
 }
@@ -980,7 +1172,7 @@ function setupQuestion(id, config, onCorrect) {
     if (link) link.remove();
     setState({ [key]: true });
     if (config.easterEgg) {
-      setTimeout(() => toast(config.easterEgg), delay + 800);
+      setTimeout(() => toast(config.easterEgg, 'date-fun-fact'), delay + 200);
     }
     setTimeout(onCorrect, delay);
   }
@@ -1038,11 +1230,9 @@ function initMainSite() {
   try { initBtsHero(); } catch (e) { console.warn('[main] initBtsHero failed:', e); }
   try { initBtsBtsLounge(); } catch (e) { console.warn('[main] initBtsBtsLounge failed:', e); }
   try { initBtsQuiz(); } catch (e) { console.warn('[main] initBtsQuiz failed:', e); }
-  try { initBtsRandomSections(); } catch (e) { console.warn('[main] initBtsRandomSections failed:', e); }
+  try { initBtsSectionArt(); } catch (e) { console.warn('[main] initBtsSectionArt failed:', e); }
 
   updateFinalTrigger(true);
-  const finalBtn = $('#finalTriggerBtn');
-  if (finalBtn) finalBtn.addEventListener('click', openFinalSurprise);
   try { initReveal(); } catch (e) { console.warn('[main] initReveal failed:', e); }
 }
 
@@ -1356,13 +1546,7 @@ function initEnoughRoom() {
 
   const R = CONFIG.reassurance;
   const messages = R.messages || [];
-  const lastThingBtn = $('#enoughFinalBtn');
   let idx = getState().interactions.reassurancePressed || 0;
-
-  if (lastThingBtn) {
-    lastThingBtn.textContent = CONFIG.ui.enoughFinalButton || 'One more last thing…';
-    lastThingBtn.addEventListener('click', openFinalSurprise);
-  }
 
   if (idx > 0 && idx <= messages.length) {
     msgEl.textContent = messages[idx - 1];
@@ -1370,15 +1554,9 @@ function initEnoughRoom() {
   }
 
   if (idx >= messages.length) {
-    btn.style.display = 'none';
-    msgEl.classList.add('hidden');
-    finalEl.classList.remove('hidden');
-    const vLabel = $('#victoryLabel');
-    const vSub = $('#victorySubtext');
-    if (vLabel) vLabel.textContent = R.victoryLabel;
-    if (vSub) vSub.textContent = R.victorySubtext;
+    showEnoughVictory(btn, msgEl, finalEl, R);
   } else {
-    btn.textContent = idx === messages.length - 1 ? CONFIG.ui.enoughLast : R.buttonLabel;
+    btn.textContent = R.buttonLabel;
   }
 
   btn.addEventListener('click', () => {
@@ -1393,20 +1571,21 @@ function initEnoughRoom() {
       heartBurst(btn.parentElement);
 
       if (idx === messages.length) {
-        btn.textContent = CONFIG.ui.enoughLast;
+        showEnoughVictory(btn, msgEl, finalEl, R);
       }
-      return;
     }
-
-    btn.style.display = 'none';
-    msgEl.classList.add('hidden');
-    finalEl.classList.remove('hidden');
-    const vLabel = $('#victoryLabel');
-    const vSub = $('#victorySubtext');
-    if (vLabel) vLabel.textContent = R.victoryLabel;
-    if (vSub) vSub.textContent = R.victorySubtext;
-    heartBurst(finalEl);
   });
+}
+
+function showEnoughVictory(btn, msgEl, finalEl, reassurance) {
+  btn.style.display = 'none';
+  msgEl.classList.add('hidden');
+  finalEl.classList.remove('hidden');
+  const vLabel = $('#victoryLabel');
+  const vSub = $('#victorySubtext');
+  if (vLabel) vLabel.textContent = reassurance.victoryLabel;
+  if (vSub) vSub.textContent = reassurance.finalMessage || reassurance.victorySubtext;
+  heartBurst(finalEl);
 }
 
 /* ---------- HUG ---------- */
@@ -1741,10 +1920,8 @@ function updateFinalTrigger(quiet) {
   const btn = $('#finalTriggerBtn');
   if (!btn) return;
   const s = getState();
-  // The first invitation lives on The Enough Room victory card. The footer
-  // trigger becomes a replay link only after the promise has been accepted.
-  if (!s.finalSurpriseUnlocked) return;
-  btn.textContent = CONFIG.ui.replayLabel;
+  // Keep the final invitation available at the end of the page, even if the quiz is skipped.
+  btn.textContent = s.finalSurpriseUnlocked ? CONFIG.ui.replayLabel : CONFIG.ui.finalTrigger;
 
   if (btn.classList.contains('hidden')) {
     btn.classList.remove('hidden');
@@ -1854,7 +2031,10 @@ function closeFinal() {
   finalTimers.forEach(clearTimeout);
   finalTimers = [];
   const overlay = $('#finalSurprise');
-  if (overlay) overlay.classList.add('hidden');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
   document.body.classList.remove('no-scroll');
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
@@ -1888,21 +2068,16 @@ function openFinalSurprise() {
   $('#finalIntro').textContent = F.intro;
   $('#finalMessage').textContent = F.message;
   overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
   document.body.classList.add('no-scroll');
   overlay.focus();
   void overlay.offsetWidth;
 
-  if (getState().finalSurpriseUnlocked) {
-    $('#finalIntro').classList.add('show');
-    $('#finalMessage').classList.add('show');
-    showAccepted(false);
-  } else {
-    finalTimers.push(
-      setTimeout(() => $('#finalIntro').classList.add('show'), 50),
-      setTimeout(() => $('#finalMessage').classList.add('show'), 1600),
-      setTimeout(() => $('#finalButtons').classList.add('show'), 3200)
-    );
-  }
+  finalTimers.push(
+    setTimeout(() => $('#finalIntro').classList.add('show'), 50),
+    setTimeout(() => $('#finalMessage').classList.add('show'), 1600),
+    setTimeout(() => $('#finalButtons').classList.add('show'), 3200)
+  );
 }
 
 async function sharePromise() {
@@ -1951,9 +2126,38 @@ function startConfetti() {
       rotation: Math.random() * Math.PI * 2,
       rotSpeed: (Math.random() - 0.5) * 0.22,
       shape: Math.random() > 0.4 ? 'heart' : 'circle',
-      life: 1
+      life: 1,
+      gravity: 0.28,
+      lifeDecay: 0.005
     });
   }
+
+  const addFirework = (xRatio, yRatio) => {
+    const x = canvas.width * xRatio;
+    const y = canvas.height * yRatio;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    for (let i = 0; i < 34; i++) {
+      const angle = (Math.PI * 2 * i) / 34;
+      const speed = 2.2 + Math.random() * 3.8;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 3 + Math.random() * 3,
+        color,
+        rotation: 0,
+        rotSpeed: 0,
+        shape: 'circle',
+        life: 1,
+        gravity: 0.035,
+        lifeDecay: 0.018,
+        firework: true
+      });
+    }
+  };
+  window.setTimeout(() => addFirework(0.22, 0.3), 250);
+  window.setTimeout(() => addFirework(0.78, 0.25), 900);
+  window.setTimeout(() => addFirework(0.5, 0.18), 1550);
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1963,15 +2167,19 @@ function startConfetti() {
       alive++;
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.28;
+      p.vy += p.gravity;
       p.rotation += p.rotSpeed;
-      p.life -= 0.005;
+      p.life -= p.lifeDecay;
 
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
+      if (p.firework) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = p.color;
+      }
       ctx.beginPath();
       if (p.shape === 'heart') {
         const s = p.size / 10;
@@ -2262,6 +2470,7 @@ function checkHash404() {
 /* ---------- BOOT ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[boot] DOMContentLoaded');
+  try { initCosmicAmbience(); } catch (e) { console.warn('[boot] cosmic ambience failed:', e); }
 
   if (typeof CONFIG === 'undefined') {
     console.error('[boot] CONFIG is not defined. config.js may have a syntax error or did not load. Showing fallback.');
@@ -2275,6 +2484,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('[boot] CONFIG loaded. Version:', (CONFIG.meta && CONFIG.meta.version) || 'unknown');
   console.log('[boot] initial state:', getState());
+
+  const finalTrigger = $('#finalTriggerBtn');
+  if (finalTrigger) finalTrigger.addEventListener('click', openFinalSurprise);
 
   try { applyBtsMobileFlags(); } catch (e) { console.warn('[boot] applyBtsMobileFlags failed:', e); }
   try { preloadBtsAssets(); } catch (e) { console.warn('[boot] preloadBtsAssets failed:', e); }
