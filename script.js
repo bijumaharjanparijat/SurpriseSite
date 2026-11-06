@@ -1415,7 +1415,8 @@ function initHeroes() {
     card.style.setProperty('--i', i);
     card.style.setProperty('--hero-color', hero.color);
     card.innerHTML = `
-      <div class="hero-card-image" style="background: linear-gradient(135deg, ${esc(hero.color)}, ${esc(hero.color)}55);">
+      <div class="hero-card-image" style="background: linear-gradient(145deg, ${esc(hero.color)}, ${esc(hero.color)}88 55%, #171326);">
+        <img class="hero-portrait" src="${esc(hero.image || `assets/mlbbhero/${hero.name.toLowerCase()}.png`)}" alt="${esc(hero.name)} hero artwork" loading="lazy" decoding="async" />
         ${hero.mvp ? '<span class="hero-mvp-badge">MVP</span>' : ''}
         <span class="hero-name-big">${esc(hero.name)}</span>
         <span class="hero-role">${esc(hero.role)}</span>
@@ -1548,7 +1549,8 @@ function initMood() {
   moods.forEach((mood) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mood-tile';
+    btn.className = `mood-tile mood-${mood.key}`;
+    btn.style.setProperty('--mood-color', mood.color || '#c2a3e1');
     if (saved === mood.key) btn.classList.add('active');
     btn.innerHTML = `
       <span class="mood-icon" aria-hidden="true">${esc(mood.icon)}</span>
@@ -1559,6 +1561,8 @@ function initMood() {
       $$('.mood-tile').forEach((t) => t.classList.remove('active'));
       btn.classList.add('active');
       msg.textContent = mood.message;
+      msg.dataset.mood = mood.key;
+      msg.style.setProperty('--mood-color', mood.color || '#c2a3e1');
       msg.classList.remove('show');
       void msg.offsetWidth;
       msg.classList.add('show');
@@ -1576,11 +1580,20 @@ function initEnoughRoom() {
   const btn = $('#enoughBtn');
   const msgEl = $('#enoughMessage');
   const finalEl = $('#enoughFinal');
+  const progressEl = $('#enoughProgress');
+  const resetBtn = $('#enoughResetBtn');
   if (!btn || !msgEl || !finalEl) return;
 
   const R = CONFIG.reassurance;
   const messages = R.messages || [];
-  let idx = getState().interactions.reassurancePressed || 0;
+  let idx = Math.min(messages.length, Math.max(0, Number(getState().interactions.reassurancePressed) || 0));
+  const updateProgress = () => {
+    if (!progressEl) return;
+    progressEl.textContent = idx < messages.length
+      ? `Reassurance ${idx} / ${messages.length} · ${messages.length - idx} clicks to victory`
+      : `Victory unlocked · ${idx} / ${messages.length}`;
+  };
+  updateProgress();
 
   if (idx > 0 && idx <= messages.length) {
     msgEl.textContent = messages[idx - 1];
@@ -1600,6 +1613,7 @@ function initEnoughRoom() {
       void msgEl.offsetWidth;
       msgEl.classList.add('show');
       idx++;
+      updateProgress();
       setInteraction('reassurancePressed', idx);
       updateFinalTrigger();
       heartBurst(btn.parentElement);
@@ -1609,6 +1623,22 @@ function initEnoughRoom() {
       }
     }
   });
+
+  if (resetBtn) {
+    resetBtn.textContent = R.resetButtonLabel || 'Start again';
+    resetBtn.addEventListener('click', () => {
+      idx = 0;
+      setInteraction('reassurancePressed', idx);
+      btn.style.display = '';
+      btn.disabled = false;
+      btn.textContent = R.buttonLabel;
+      msgEl.textContent = '';
+      msgEl.classList.remove('show', 'hidden');
+      finalEl.classList.add('hidden');
+      updateProgress();
+      updateFinalTrigger();
+    });
+  }
 }
 
 function showEnoughVictory(btn, msgEl, finalEl, reassurance) {
@@ -1695,9 +1725,9 @@ function initFavorites() {
   grid.innerHTML = '';
   ((CONFIG.herFavorites && CONFIG.herFavorites.items) || []).forEach((item) => {
     const card = document.createElement('div');
-    card.className = 'favorite-card';
+    card.className = `favorite-card favorite-${String(item.key || 'item').replace(/[^a-z0-9_-]/gi, '')}`;
     card.innerHTML = `
-      <div class="favorite-label">${esc(item.label)}</div>
+      <div class="favorite-label"><span class="favorite-icon" aria-hidden="true">${esc(item.icon || '♡')}</span><span>${esc(item.label)}</span></div>
       <p class="favorite-note">${esc(item.note)}</p>
     `;
     grid.appendChild(card);
@@ -1821,9 +1851,27 @@ function initDreamMap() {
   const map = $('#dreamMap');
   const msg = $('#dreamMessage');
   if (!map || !msg) return;
-  map.innerHTML = '';
 
   const pins = (CONFIG.dreamMap && CONFIG.dreamMap.pins) || [];
+  const points = pins.map((pin) => ({ x: Number(pin.x) || 0, y: Number(pin.y) || 0 }));
+  const route = points.map((point, i) => {
+    if (i === 0) return `M ${point.x} ${point.y}`;
+    const previous = points[i - 1];
+    const curve = i % 2 ? -12 : 12;
+    return `Q ${(previous.x + point.x) / 2} ${(previous.y + point.y) / 2 + curve} ${point.x} ${point.y}`;
+  }).join(' ');
+  map.classList.add('is-mapped');
+  map.innerHTML = `
+    <div class="dream-map-sun" aria-hidden="true"></div>
+    <div class="dream-map-cloud dream-map-cloud--one" aria-hidden="true"></div>
+    <div class="dream-map-cloud dream-map-cloud--two" aria-hidden="true"></div>
+    <div class="dream-map-compass" aria-hidden="true"><span>N</span><i>✦</i></div>
+    <div class="dream-map-caption" aria-hidden="true"><span>OUR ROUTE</span><span class="dream-map-caption-line"></span><span>${points.length} destinations</span></div>
+    <svg class="dream-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path class="dream-route-halo" d="${route}" />
+      <path class="dream-route-line" d="${route}" />
+    </svg>
+  `;
 
   pins.forEach((pin) => {
     const el = document.createElement('button');
@@ -1877,7 +1925,9 @@ function initLetter() {
     const card = el.closest('.letter-card');
     if (card) card.addEventListener('click', () => { if (el._finish) el._finish(); });
 
+    el.classList.add('typing');
     typeWriter(el, full, 22).then(() => {
+      el.classList.remove('typing');
       contBtn.classList.remove('hidden');
       setInteraction('letterRead', true);
       updateFinalTrigger();

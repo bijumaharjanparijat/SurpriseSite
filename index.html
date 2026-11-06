@@ -3,14 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>SURPRISE WEBSITE</title>
-  <meta name="description" content="A little something for the person who makes my ordinary days feel like a victory screen." />
+  <title>A Little Surprise for Deepa 💜</title>
+  <meta name="description" content="A birthday surprise for Deepa, filled with our favorite songs, little memories, and all the love you deserve—today and always." />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#0E1220" />
   <meta name="format-detection" content="telephone=no" />
   <meta property="og:title" content="For Deepa 💜" />
-  <meta property="og:description" content="A little something, just for you." />
+  <meta property="og:description" content="A birthday surprise for Deepa, filled with our favorite songs, little memories, and all the love you deserve—today and always." />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="A Little Surprise for Deepa" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:image" content="assets/photos/SurprisePhoto.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:alt" content="A birthday surprise made for Deepa" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="For Deepa 💜" />
+  <meta name="twitter:description" content="A birthday surprise for Deepa, filled with our favorite songs, little memories, and all the love you deserve—today and always." />
+  <meta name="twitter:image" content="assets/photos/SurprisePhoto.png" />
+  <meta name="twitter:image:alt" content="A birthday surprise made for Deepa" />
   <link rel="icon" href="assets/bts/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -198,11 +208,13 @@
       <p class="section-subtitle" data-text="sections.enoughSection.subtitle">For the days when the thought comes back.</p>
       <div class="enough-area">
         <button class="enough-btn" id="enoughBtn" type="button"></button>
+        <p class="enough-progress" id="enoughProgress" aria-live="polite"></p>
         <p class="enough-message" id="enoughMessage" aria-live="polite"></p>
         <div class="enough-final hidden" id="enoughFinal">
           <p class="victory-label" id="victoryLabel"></p>
           <p class="victory-subtext" id="victorySubtext"></p>
         </div>
+        <button class="enough-reset-btn" id="enoughResetBtn" type="button">Start again</button>
       </div>
     </section>
 
@@ -277,6 +289,17 @@
     <!-- ========== LOVE LETTER ========== -->
     <!-- Random side PNG injected -->
     <section class="section letter-section" id="letterSection">
+      <div class="letter-sky" aria-hidden="true">
+        <span class="letter-sun"></span>
+        <img class="letter-cloud letter-cloud--one" src="assets/photos/clouds/cloud1.png" alt="" loading="lazy" decoding="async" />
+        <img class="letter-cloud letter-cloud--two" src="assets/photos/clouds/cloud3.png" alt="" loading="lazy" decoding="async" />
+        <img class="letter-cloud letter-cloud--three" src="assets/photos/clouds/cloud5.png" alt="" loading="lazy" decoding="async" />
+        <span class="letter-star letter-star--one">✦</span>
+        <span class="letter-star letter-star--two">✧</span>
+        <span class="letter-star letter-star--three">✦</span>
+        <span class="letter-star letter-star--four">✧</span>
+        <span class="letter-star letter-star--five">✦</span>
+      </div>
       <div class="letter-card reveal">
         <h2 class="letter-heading" id="letterHeading">A letter for you</h2>
         <p class="letter-text" id="letterText"></p>

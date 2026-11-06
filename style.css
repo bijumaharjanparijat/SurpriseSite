@@ -1758,7 +1758,7 @@ body.bts-static .bts-side {
 .hero-card {
   border-radius: 18px;
   overflow: hidden;
-  background: var(--pearl);
+  background: linear-gradient(155deg, rgba(39, 31, 61, 0.98), rgba(16, 19, 32, 0.98));
   border: 1px solid var(--border);
   transition:
     transform 0.4s var(--ease),
@@ -1768,13 +1768,27 @@ body.bts-static .bts-side {
   transform: translateY(20px);
   position: relative;
 }
+.hero-card::before {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  top: -30%;
+  left: -70%;
+  width: 38%;
+  height: 160%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transform: rotate(22deg);
+  transition: left 0.75s ease;
+  pointer-events: none;
+}
+.hero-card:hover::before { left: 145%; }
 .hero-card.in-view {
   opacity: 1;
   transform: translateY(0);
   transition-delay: calc(var(--i, 0) * 60ms);
 }
 .hero-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-8px) scale(1.018);
   border-color: var(--hero-color, var(--purple-light));
   box-shadow:
     0 16px 44px rgba(0, 0, 0, 0.45),
@@ -1783,24 +1797,51 @@ body.bts-static .bts-side {
 
 .hero-card-image {
   position: relative;
-  height: 145px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  padding: 1rem;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--hero-color, #33234d);
+}
+.hero-card-image::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 35% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(13, 12, 25, 0.92));
+  pointer-events: none;
+}
+.hero-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.45rem;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.32));
+  transition: transform 0.55s cubic-bezier(0.2, 0.75, 0.25, 1), filter 0.4s;
+}
+.hero-card:hover .hero-portrait {
+  transform: scale(1.075) translateY(-2%);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.48)) drop-shadow(0 0 16px var(--hero-color));
 }
 
 .hero-name-big {
+  position: absolute;
+  z-index: 2;
+  left: 0.85rem;
+  bottom: 2.35rem;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: clamp(1.1rem, 1.5vw, 1.4rem);
   color: var(--cream);
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
 }
 
 .hero-role {
+  position: absolute;
+  z-index: 2;
+  left: 0.85rem;
+  bottom: 0.8rem;
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1814,6 +1855,7 @@ body.bts-static .bts-side {
 
 .hero-mvp-badge {
   position: absolute;
+  z-index: 2;
   top: 0.65rem;
   right: 0.65rem;
   padding: 0.2rem 0.55rem;
@@ -2092,36 +2134,54 @@ body.bts-static .bts-side {
 }
 .mood-tile:hover {
   transform: translateY(-3px);
-  border-color: var(--purple-mid);
+  border-color: var(--mood-color, var(--purple-mid));
   background: rgba(155, 107, 196, 0.1);
 }
 .mood-tile.active {
-  border-color: var(--gold);
-  background: linear-gradient(
-    135deg,
-    rgba(123, 75, 158, 0.25),
-    rgba(232, 213, 163, 0.08)
-  );
-  box-shadow: 0 0 30px rgba(232, 213, 163, 0.2);
+  border-color: var(--mood-color, var(--gold));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--mood-color, var(--gold)) 18%, transparent), rgba(194, 163, 225, 0.06));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--mood-color, var(--gold)) 28%, transparent), inset 0 0 22px color-mix(in srgb, var(--mood-color, var(--gold)) 8%, transparent);
+  transform: translateY(-3px);
 }
 
 .mood-icon {
-  font-size: 1.35rem;
-  color: var(--purple-light);
+  display: block;
+  font-size: 2rem;
+  color: var(--mood-color, var(--purple-light));
   line-height: 1;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--mood-color, var(--purple-light)) 45%, transparent));
+  will-change: transform;
 }
 
 .mood-label {
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  transition: color 0.3s ease;
 }
+.mood-tile.active .mood-label {
+  color: var(--mood-color, var(--cream));
+}
+.mood-happy .mood-icon { animation: moodHappy 2.2s ease-in-out infinite; }
+.mood-sad .mood-icon { animation: moodSad 3.4s ease-in-out infinite; }
+.mood-tired .mood-icon { animation: moodTired 3s ease-in-out infinite; }
+.mood-angry .mood-icon { animation: moodAngry 2.8s ease-in-out infinite; }
+.mood-missing .mood-icon { animation: moodMissing 2s ease-in-out infinite; }
+.mood-inlove .mood-icon { animation: moodInLove 1.8s ease-in-out infinite; }
+.mood-hungry .mood-icon { animation: moodHungry 2.5s ease-in-out infinite; }
+@keyframes moodHappy { 0%, 100% { transform: translateY(0) rotate(0); } 35% { transform: translateY(-6px) rotate(-8deg); } 70% { transform: translateY(-2px) rotate(8deg); } }
+@keyframes moodSad { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(4px) rotate(-7deg); } }
+@keyframes moodTired { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(3px) scale(0.92); } }
+@keyframes moodAngry { 0%, 76%, 100% { transform: translateX(0) rotate(0); } 80% { transform: translateX(-4px) rotate(-8deg); } 86% { transform: translateX(4px) rotate(8deg); } 92% { transform: translateX(-2px) rotate(-4deg); } }
+@keyframes moodMissing { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.14); } 60% { transform: scale(1.03); } }
+@keyframes moodInLove { 0%, 100% { transform: scale(1); } 20% { transform: scale(1.15); } 38% { transform: scale(1); } 55% { transform: scale(1.1); } }
+@keyframes moodHungry { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-8deg) translateY(-2px); } 40%, 80% { transform: rotate(8deg); } }
 
 .mood-message {
   margin: 2rem auto 0;
   font-family: var(--font-hand);
   font-size: clamp(1.3rem, 4.5vw, 1.65rem);
-  color: var(--purple-light);
+  color: var(--mood-color, var(--purple-light));
   max-width: 600px;
   line-height: 1.5;
   min-height: 3.6em;
@@ -2129,7 +2189,8 @@ body.bts-static .bts-side {
   transform: translateY(10px);
   transition:
     opacity 0.6s var(--ease-out),
-    transform 0.6s var(--ease-out);
+    transform 0.6s var(--ease-out),
+    color 0.4s ease;
   position: relative;
   z-index: 2;
 }
@@ -2178,6 +2239,20 @@ body.bts-static .bts-side {
   animation: none;
 }
 
+.enough-progress {
+  width: fit-content;
+  margin: 1rem auto 0;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(194, 163, 225, 0.25);
+  border-radius: 999px;
+  background: rgba(194, 163, 225, 0.07);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .enough-message {
   margin-top: 2rem;
   font-family: var(--font-hand);
@@ -2194,6 +2269,26 @@ body.bts-static .bts-side {
 .enough-message.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+.enough-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1.4rem auto 0;
+  padding: 0.65rem 1.05rem;
+  border: 1px solid rgba(194, 163, 225, 0.35);
+  border-radius: 999px;
+  background: rgba(194, 163, 225, 0.06);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+.enough-reset-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--purple-light);
+  background: rgba(194, 163, 225, 0.14);
+  color: var(--cream);
 }
 
 .enough-final {
@@ -2480,10 +2575,22 @@ body.bts-static .bts-side {
   align-items: center;
   gap: 0.4rem;
 }
-.favorite-label::before {
-  content: "♡";
-  color: var(--pink);
-  font-size: 0.9rem;
+.favorite-icon {
+  display: inline-grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 2.15rem;
+  place-items: center;
+  border: 1px solid rgba(194, 163, 225, 0.23);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(194, 163, 225, 0.16), rgba(244, 194, 194, 0.08));
+  font-size: 1.25rem;
+  filter: drop-shadow(0 0 8px rgba(194, 163, 225, 0.18));
+  transition: transform 0.35s var(--ease), filter 0.35s ease;
+}
+.favorite-card:hover .favorite-icon {
+  transform: translateY(-2px) rotate(-7deg) scale(1.08);
+  filter: drop-shadow(0 0 12px rgba(194, 163, 225, 0.44));
 }
 
 .favorite-note {
@@ -2688,6 +2795,7 @@ body.bts-static .bts-side {
   border-radius: 24px;
   overflow: hidden;
   z-index: 2;
+  isolation: isolate;
 }
 .dream-map::before {
   content: "";
@@ -2699,8 +2807,114 @@ body.bts-static .bts-side {
     transparent 0
   );
   background-size: 26px 26px;
+  opacity: 0.7;
+  z-index: 0;
   pointer-events: none;
 }
+.dream-map::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: -24%;
+  background:
+    radial-gradient(ellipse at 20% 45%, transparent 0 19%, rgba(194, 163, 225, 0.11) 19.2% 19.5%, transparent 19.8% 24%, rgba(194, 163, 225, 0.08) 24.2% 24.5%, transparent 24.8%),
+    radial-gradient(ellipse at 70% 60%, transparent 0 15%, rgba(244, 194, 194, 0.1) 15.2% 15.5%, transparent 15.8% 20%, rgba(244, 194, 194, 0.07) 20.2% 20.5%, transparent 20.8%);
+  opacity: 0.8;
+  pointer-events: none;
+  animation: mapContours 32s ease-in-out infinite alternate;
+}
+.dream-map-sun {
+  position: absolute;
+  z-index: 0;
+  left: 13%;
+  top: 12%;
+  width: clamp(42px, 8vw, 76px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff5d4 0 7%, #f8db9c 14%, rgba(245, 189, 131, 0.65) 35%, rgba(245, 189, 131, 0.12) 68%, transparent 72%);
+  filter: drop-shadow(0 0 22px rgba(245, 201, 143, 0.5));
+  animation: mapSunGlow 4.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.dream-map-cloud {
+  position: absolute;
+  z-index: 0;
+  width: 27%;
+  height: 13%;
+  border-radius: 50%;
+  background: rgba(185, 191, 228, 0.1);
+  filter: blur(14px);
+  pointer-events: none;
+  animation: mapCloudDrift 25s ease-in-out infinite alternate;
+}
+.dream-map-cloud--one { top: 20%; left: 38%; }
+.dream-map-cloud--two { right: 2%; bottom: 17%; width: 34%; animation-delay: -11s; animation-direction: alternate-reverse; }
+.dream-map-compass {
+  position: absolute;
+  z-index: 2;
+  top: 1rem;
+  right: 1.1rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  color: rgba(255, 248, 240, 0.72);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+.dream-map-compass i {
+  color: var(--gold);
+  font-size: 1.3rem;
+  font-style: normal;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(232, 213, 163, 0.65);
+  animation: compassTurn 18s linear infinite;
+}
+.dream-map-caption {
+  position: absolute;
+  z-index: 2;
+  left: 1rem;
+  bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.65rem;
+  border: 1px solid rgba(194, 163, 225, 0.2);
+  border-radius: 999px;
+  background: rgba(12, 15, 28, 0.58);
+  color: rgba(255, 248, 240, 0.72);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.dream-map-caption > span:last-child { font-weight: 500; letter-spacing: 0.02em; }
+.dream-map-caption-line { width: 22px; height: 1px; background: linear-gradient(90deg, var(--pink), var(--purple-light)); }
+.dream-route {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.dream-route path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.dream-route-halo { stroke: rgba(244, 194, 194, 0.22); stroke-width: 9px; filter: blur(5px); }
+.dream-route-line {
+  stroke: rgba(255, 222, 190, 0.88);
+  stroke-width: 1.6px;
+  stroke-dasharray: 4 5;
+  filter: drop-shadow(0 0 4px rgba(255, 222, 190, 0.8));
+  animation: dreamRouteTravel 8s linear infinite;
+}
+@keyframes dreamRouteTravel { to { stroke-dashoffset: -72; } }
+@keyframes mapContours { from { transform: translate(-1.5%, 0); } to { transform: translate(1.5%, -1%); } }
+@keyframes mapSunGlow { from { transform: scale(0.94); opacity: 0.72; } to { transform: scale(1.08); opacity: 1; } }
+@keyframes mapCloudDrift { from { transform: translateX(-12px); opacity: 0.48; } to { transform: translateX(16px); opacity: 0.9; } }
+@keyframes compassTurn { to { transform: rotate(360deg); } }
 
 .dream-pin {
   position: absolute;
@@ -2711,7 +2925,7 @@ body.bts-static .bts-side {
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-  z-index: 2;
+  z-index: 3;
   cursor: pointer;
   transition: transform 0.25s;
 }
@@ -2777,9 +2991,58 @@ body.bts-static .bts-side {
    LOVE LETTER
    ============================================================ */
 .letter-section {
+  position: relative;
+  isolation: isolate;
   padding-top: 3rem;
   padding-bottom: 3rem;
 }
+.letter-sky {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.letter-sun {
+  position: absolute;
+  top: 2%;
+  right: 13%;
+  width: clamp(112px, 19vw, 205px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 248, 220, 0.95) 0 3%, rgba(255, 225, 161, 0.75) 10%, rgba(244, 194, 194, 0.24) 40%, rgba(194, 163, 225, 0.1) 62%, transparent 72%);
+  filter: blur(1px) drop-shadow(0 0 28px rgba(255, 225, 161, 0.4));
+  animation: letterSunGlow 5.8s ease-in-out infinite alternate;
+}
+.letter-cloud {
+  position: absolute;
+  left: -28%;
+  width: clamp(180px, 27vw, 380px);
+  height: clamp(90px, 15vw, 190px);
+  object-fit: contain;
+  opacity: 0.13;
+  filter: drop-shadow(0 0 20px rgba(194, 163, 225, 0.2));
+  mix-blend-mode: screen;
+  animation: letterCloudFloat 46s linear infinite;
+}
+.letter-cloud--one { top: 8%; animation-duration: 52s; animation-delay: -7s; }
+.letter-cloud--two { top: 48%; width: clamp(150px, 22vw, 300px); opacity: 0.1; animation-duration: 41s; animation-delay: -13s; animation-direction: reverse; }
+.letter-cloud--three { top: 76%; width: clamp(170px, 24vw, 340px); opacity: 0.12; animation-duration: 58s; animation-delay: -28s; }
+.letter-star {
+  position: absolute;
+  color: var(--gold);
+  font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+  text-shadow: 0 0 12px rgba(255, 248, 220, 0.92), 0 0 28px rgba(194, 163, 225, 0.75);
+  animation: letterStarTwinkle 2.6s ease-in-out infinite alternate;
+}
+.letter-star--one { top: 13%; left: 16%; }
+.letter-star--two { top: 24%; right: 27%; animation-delay: -0.8s; }
+.letter-star--three { top: 66%; left: 9%; animation-delay: -1.5s; }
+.letter-star--four { top: 80%; right: 14%; animation-delay: -0.4s; }
+.letter-star--five { top: 39%; right: 8%; animation-delay: -1.9s; }
+@keyframes letterSunGlow { from { transform: scale(0.94); opacity: 0.65; } to { transform: scale(1.08); opacity: 1; } }
+@keyframes letterCloudFloat { from { transform: translateX(0); } to { transform: translateX(155vw); } }
+@keyframes letterStarTwinkle { from { opacity: 0.32; transform: scale(0.7) rotate(-12deg); } to { opacity: 1; transform: scale(1.2) rotate(12deg); } }
 
 .letter-card {
   max-width: 700px;
@@ -2820,6 +3083,17 @@ body.bts-static .bts-side {
   border-radius: 26px 26px 0 0;
   opacity: 0.7;
 }
+.letter-card::after {
+  content: '✦';
+  position: absolute;
+  top: 1.1rem;
+  right: 1.4rem;
+  color: var(--gold);
+  font-size: 1.15rem;
+  text-shadow: 0 0 14px rgba(232, 213, 163, 0.72);
+  animation: letterStarTwinkle 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
 
 .letter-heading {
   font-family: var(--font-hand);
@@ -2828,6 +3102,7 @@ body.bts-static .bts-side {
   margin-bottom: 1.5rem;
   text-align: center;
   font-weight: 600;
+  text-shadow: 0 0 18px rgba(194, 163, 225, 0.4);
 }
 
 .letter-text {
@@ -2838,6 +3113,14 @@ body.bts-static .bts-side {
   white-space: pre-wrap;
   min-height: 12em;
 }
+.letter-text.typing::after {
+  content: '▍';
+  display: inline-block;
+  margin-left: 0.12em;
+  color: var(--gold);
+  animation: letterCaretBlink 0.8s steps(2, end) infinite;
+}
+@keyframes letterCaretBlink { 50% { opacity: 0; } }
 
 .continue-btn {
   display: block;
@@ -3963,7 +4246,8 @@ body.bts-static .bts-side {
     gap: 0.85rem;
   }
   .hero-card-image {
-    height: 120px;
+    height: auto;
+    aspect-ratio: 1 / 1;
   }
   .hero-name-big {
     font-size: 1.2rem;

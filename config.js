@@ -281,6 +281,7 @@ const CONFIG = {
     cards: [
       {
         name: "Aamon",
+        image: "assets/mlbbhero/aamon.png",
         role: "Jungler",
         caption:
           "Your Aamon carried me through ranks I had no business being in. You're not just my duo. You're my carry.",
@@ -289,6 +290,7 @@ const CONFIG = {
       },
       {
         name: "Angela",
+        image: "assets/mlbbhero/angela.png",
         role: "Support",
         caption:
           "You babysit me when I play marksman. We both die anyway. I'd die a hundred times with you.",
@@ -296,24 +298,28 @@ const CONFIG = {
       },
       {
         name: "Aurora",
+        image: "assets/mlbbhero/aurora.png",
         role: "Mid",
         caption: "Your Aurora freezes the enemy. You thaw me.",
         color: "#7FB3D5",
       },
       {
         name: "Zetian",
+        image: "assets/mlbbhero/zetian.png",
         role: "Mid",
         caption: "The Empress. Fitting.",
         color: "#C9A0DC",
       },
       {
         name: "Lesley",
+        image: "assets/mlbbhero/lesley.png",
         role: "Gold",
         caption: "You snipe from a distance. I still feel it from here.",
         color: "#8B6F9E",
       },
       {
         name: "Hanabi",
+        image: "assets/mlbbhero/hanabi.png",
         role: "Gold",
         caption:
           "The one you pick when you want to win. The one I pick when I want to watch you win.",
@@ -321,18 +327,21 @@ const CONFIG = {
       },
       {
         name: "Floryn",
+        image: "assets/mlbbhero/floryn.png",
         role: "Roam",
         caption: "You heal the whole team. You healed me without even trying.",
         color: "#A8D8B9",
       },
       {
         name: "Carmilla",
+        image: "assets/mlbbhero/carmilla.png",
         role: "Roam",
         caption: "You link to me. I link to you. Same thing.",
         color: "#D4A5A5",
       },
       {
         name: "Esmeralda",
+        image: "assets/mlbbhero/esmeralda.png",
         role: "Exp",
         caption:
           "You hold the exp lane alone. You never have to hold anything alone again.",
@@ -340,6 +349,7 @@ const CONFIG = {
       },
       {
         name: "Alpha",
+        image: "assets/mlbbhero/alpha.png",
         role: "Jungler",
         caption: "You go in first. I'll always follow.",
         color: "#A0A0C0",
@@ -386,6 +396,7 @@ const CONFIG = {
     title: "The Enough Room",
     subtitle: "For the days when the thought comes back.",
     buttonLabel: "When you feel like you're not enough, press this",
+    resetButtonLabel: "Start again",
     messages: [
       "You are not a burden. You are the best part of my day.",
       "Your anger doesn't scare me. It tells me you trust me enough to show it.",
@@ -415,49 +426,56 @@ const CONFIG = {
       {
         key: "happy",
         label: "Happy",
-        icon: "☀",
+        icon: "😆",
+        color: "#ffd166",
         message:
           "Good. Stay there. I'm saving a screenshot of this mood for the days I miss you.",
       },
       {
         key: "sad",
         label: "Sad",
-        icon: "☂",
+        icon: "😔",
+        color: "#8bb8ff",
         message:
           "I'm sorry. You don't have to explain it to me. Just sit here a second. I'm sitting with you.",
       },
       {
         key: "tired",
         label: "Tired",
-        icon: "☾",
+        icon: "🫩",
+        color: "#b7a1e8",
         message:
           "You don't have to earn rest. Close your eyes. I'll be here when you open them.",
       },
       {
         key: "angry",
         label: "Angry",
-        icon: "⚡",
+        icon: "🤬",
+        color: "#ff6b6b",
         message:
           "Okay. I'm listening. You can be as loud as you need. I'm not going anywhere.",
       },
       {
         key: "missing",
         label: "Missing you",
-        icon: "✈",
+        icon: "🥹",
+        color: "#f39ac7",
         message:
           "Same. Since the second you got on that plane. The timezone is a rumor. My feelings did not get the memo.",
       },
       {
         key: "inlove",
         label: "In love",
-        icon: "♡",
+        icon: "🥰",
+        color: "#ff86b7",
         message:
           "Convenient. Because the feeling is mutual and slightly embarrassing in public.",
       },
       {
         key: "hungry",
         label: "Hungry",
-        icon: "❀",
+        icon: "🤤",
+        color: "#ffad5c",
         message:
           "Go eat something. Momo. Boba. Not brinjal. Never brinjal. I'll fight every brinjal in Nepal for you.",
       },
@@ -574,47 +592,62 @@ const CONFIG = {
       {
         key: "boba",
         label: "Boba tea",
+        icon: "🧋",
         note: "The only rival I have. I've accepted it. Mostly.",
       },
       {
         key: "momo",
         label: "Momo",
+        icon: "🥟",
         note: "The way to your heart is steamed and served with achar.",
       },
       {
         key: "busan",
         label: "Busan",
+        icon: "🌊",
         note: "Jimin's hometown. Your favorite. Fine, I'll share.",
       },
       {
         key: "paris",
         label: "Paris",
+        icon: "🗼",
         note: "Your dream place. I want to be standing next to you when you see it.",
       },
       {
         key: "blue",
         label: "Blue",
+        icon: "💙",
         note: "The color of your favorite things. And, currently, the color of my sky when I miss you.",
       },
       {
         key: "park",
         label: "Park dates",
+        icon: "🌳",
         note: "Hand in hand. That's the whole plan. That's the whole plan for life.",
       },
       {
         key: "train",
         label: "Train to Busan",
+        icon: "🚆",
         note: "You love a movie that scares you and makes you cry. I love that about you.",
       },
       {
         key: "books",
         label: "Books",
+        icon: "📚",
         note: "One day I want to be the reason you look up from one and smile.",
       },
       {
         key: "latin",
         label: "Latin music",
+        icon: "🎶",
         note: "Your favorite genre. I'm learning the rhythm. I'll meet you there.",
+      },
+      {
+        key: "v",
+        label: "V (Taehyung / THV)",
+        icon: "🐻",
+        note: "Your favorite BTS member. One more reason I know your taste is impeccable.",
       },
     ],
   },
