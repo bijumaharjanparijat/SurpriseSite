@@ -97,13 +97,18 @@
     <!-- ========== HERO ========== -->
     <!-- BTS sides 13 (left) + 14 (right) injected by script.js. 13 is tappable for easter egg. -->
     <section class="hero" id="heroSection" aria-label="Welcome">
+      <div class="hero-clouds" id="heroClouds" aria-hidden="true"></div>
       <div class="particles" id="particles" aria-hidden="true"></div>
       <div class="hero-content">
+        <img class="hero-birthday-mark bts-png-19" id="heroBirthdayMark" alt="" aria-hidden="true" />
         <p class="hero-eyebrow" data-text="ui.heroEyebrow">Happy Birthday</p>
         <h1 class="hero-name" id="heroName"></h1>
         <p class="hero-subtitle" id="heroSubtitle" aria-live="polite"></p>
         <p class="hero-floating-fact" id="heroFact" aria-live="polite"></p>
         <button class="begin-btn" id="beginBtn" type="button">Press to begin</button>
+        <figure class="hero-cake-wrap">
+          <img class="hero-cake-photo" id="heroCake" alt="A purple BTS birthday cake made for Deepa" />
+        </figure>
       </div>
       <div class="scroll-hint" aria-hidden="true">↓</div>
       <button class="secret-corner" id="secretCorner" aria-label="Secret" tabindex="-1"></button>

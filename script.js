@@ -1236,6 +1236,35 @@ function initMainSite() {
   try { initReveal(); } catch (e) { console.warn('[main] initReveal failed:', e); }
 }
 
+function initHeroClouds() {
+  const stage = $('#heroClouds');
+  if (!stage || stage.dataset.ready === 'true') return;
+  stage.dataset.ready = 'true';
+  if (reducedMotion) return;
+
+  const pool = ((CONFIG.hero && CONFIG.hero.clouds) || []).slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const isPhone = window.matchMedia('(max-width: 600px)').matches;
+  const selected = pool.slice(0, isPhone ? 3 : 5);
+  selected.forEach((cloud, index) => {
+    const img = document.createElement('img');
+    img.className = `hero-cloud ${cloud.className || ''}`.trim();
+    img.src = cloud.src;
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.style.top = `${8 + Math.random() * 78}%`;
+    img.style.setProperty('--cloud-duration', `${isPhone ? 52 : 38 + Math.random() * 42}s`);
+    img.style.setProperty('--cloud-delay', `${-Math.random() * (index + 5) * 5}s`);
+    img.style.setProperty('--cloud-opacity', `${isPhone ? 0.1 + Math.random() * 0.1 : 0.15 + Math.random() * 0.18}`);
+    if (Math.random() > 0.5) img.classList.add('hero-cloud--reverse');
+    stage.appendChild(img);
+  });
+}
+
 /* ---------- HERO ---------- */
 function initHero() {
   const nameEl = $('#heroName');
@@ -1245,6 +1274,11 @@ function initHero() {
   const particleBox = $('#particles');
 
   if (nameEl) nameEl.textContent = CONFIG.hero.name;
+  const birthdayMark = $('#heroBirthdayMark');
+  if (birthdayMark) birthdayMark.src = CONFIG.hero.birthdayMark || 'assets/bts/trimmed/19.png';
+  const cake = $('#heroCake');
+  if (cake) cake.src = CONFIG.hero.cakeImage || 'assets/photos/birthdayCake.png';
+  try { initHeroClouds(); } catch (e) { console.warn('[hero] clouds failed:', e); }
   if (subtitleEl) subtitleEl.textContent = '';
   if (beginBtn) beginBtn.textContent = CONFIG.hero.beginButton;
 

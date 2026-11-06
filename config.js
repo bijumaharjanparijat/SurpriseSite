@@ -113,6 +113,15 @@ const CONFIG = {
     typewriter: "You are the best thing that happened to my Nepal chapter.",
     beginButton: "Press to begin",
     eyebrow: "Happy Birthday",
+    birthdayMark: "assets/bts/trimmed/19.png",
+    cakeImage: "assets/photos/birthdayCake.png",
+    clouds: [
+      { src: "assets/photos/clouds/cloud1.png", className: "hero-cloud--1" },
+      { src: "assets/photos/clouds/cloud2.png", className: "hero-cloud--2" },
+      { src: "assets/photos/clouds/cloud3.png", className: "hero-cloud--3" },
+      { src: "assets/photos/clouds/cloud4.png", className: "hero-cloud--4" },
+      { src: "assets/photos/clouds/cloud5.png", className: "hero-cloud--5" },
+    ],
     scrollTarget: "btsSection",
     floatingFacts: [
       "Currently: the best Aamon in my lobby.",
